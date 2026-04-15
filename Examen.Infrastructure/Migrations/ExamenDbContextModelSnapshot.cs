@@ -71,21 +71,21 @@ namespace Examen.Infrastructure.Migrations
             modelBuilder.Entity("Examen.ApplicationCore.Domain.ResultatControle", b =>
                 {
                     b.Property<string>("Id")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<int>("Cadence")
                         .HasColumnType("int");
 
                     b.Property<string>("CodeArticle")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("CodeMachine")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("DateControle")
                         .HasColumnType("datetime2");
@@ -97,9 +97,6 @@ namespace Examen.Infrastructure.Migrations
                     b.Property<string>("Defaut2")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("MachineCodeMachine")
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("NbDefautsTest1")
                         .HasColumnType("int");
@@ -127,12 +124,24 @@ namespace Examen.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("TypeDefaut1Id")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TypeDefaut2Id")
+                        .HasColumnType("int");
+
                     b.Property<int>("UtilisateurId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MachineCodeMachine");
+                    b.HasIndex("CodeArticle");
+
+                    b.HasIndex("CodeMachine");
+
+                    b.HasIndex("TypeDefaut1Id");
+
+                    b.HasIndex("TypeDefaut2Id");
 
                     b.HasIndex("UtilisateurId");
 
@@ -147,9 +156,10 @@ namespace Examen.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CodeArticle")
+                    b.Property<string>("CauseProbable")
                         .IsRequired()
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -175,8 +185,6 @@ namespace Examen.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CodeArticle");
-
                     b.ToTable("TypeDefauts");
                 });
 
@@ -193,17 +201,18 @@ namespace Examen.Infrastructure.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Password")
                         .IsRequired()
@@ -219,26 +228,43 @@ namespace Examen.Infrastructure.Migrations
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.ResultatControle", b =>
                 {
-                    b.HasOne("Examen.ApplicationCore.Domain.Machine", null)
+                    b.HasOne("Examen.ApplicationCore.Domain.Produit", "Produit")
                         .WithMany("ResultatControles")
-                        .HasForeignKey("MachineCodeMachine");
+                        .HasForeignKey("CodeArticle")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
-                    b.HasOne("Examen.ApplicationCore.Domain.Utilisateur", null)
+                    b.HasOne("Examen.ApplicationCore.Domain.Machine", "Machine")
+                        .WithMany("ResultatControles")
+                        .HasForeignKey("CodeMachine")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Examen.ApplicationCore.Domain.TypeDefaut", "TypeDefaut1")
+                        .WithMany()
+                        .HasForeignKey("TypeDefaut1Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Examen.ApplicationCore.Domain.TypeDefaut", "TypeDefaut2")
+                        .WithMany()
+                        .HasForeignKey("TypeDefaut2Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Examen.ApplicationCore.Domain.Utilisateur", "Utilisateur")
                         .WithMany("ResultatControles")
                         .HasForeignKey("UtilisateurId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
 
-            modelBuilder.Entity("Examen.ApplicationCore.Domain.TypeDefaut", b =>
-                {
-                    b.HasOne("Examen.ApplicationCore.Domain.Produit", "Produit")
-                        .WithMany("TypeDefauts")
-                        .HasForeignKey("CodeArticle")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Machine");
 
                     b.Navigation("Produit");
+
+                    b.Navigation("TypeDefaut1");
+
+                    b.Navigation("TypeDefaut2");
+
+                    b.Navigation("Utilisateur");
                 });
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Machine", b =>
@@ -248,7 +274,7 @@ namespace Examen.Infrastructure.Migrations
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Produit", b =>
                 {
-                    b.Navigation("TypeDefauts");
+                    b.Navigation("ResultatControles");
                 });
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Utilisateur", b =>

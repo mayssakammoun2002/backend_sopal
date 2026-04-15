@@ -45,14 +45,13 @@ namespace Examen.Web.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (string.IsNullOrWhiteSpace(dto.CodeArticle))
-                return BadRequest("CodeArticle est obligatoire.");
-
             string imageName = string.Empty;
 
+            // Upload image
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
             {
                 var imagesFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+
                 if (!Directory.Exists(imagesFolder))
                     Directory.CreateDirectory(imagesFolder);
 
@@ -67,9 +66,9 @@ namespace Examen.Web.Controllers
             {
                 NomDefaut = dto.NomDefaut,
                 Description = dto.Description,
+                CauseProbable = dto.CauseProbable, // ✅ AJOUT
                 Solution = dto.Solution,
                 Frequence = dto.Frequence,
-                CodeArticle = dto.CodeArticle,
                 ImagePath = imageName
             };
 
@@ -93,14 +92,15 @@ namespace Examen.Web.Controllers
 
             existing.NomDefaut = dto.NomDefaut;
             existing.Description = dto.Description;
+            existing.CauseProbable = dto.CauseProbable; // ✅ AJOUT
             existing.Solution = dto.Solution;
             existing.Frequence = dto.Frequence;
-            existing.CodeArticle = dto.CodeArticle;
 
-            // Si une nouvelle image est envoyée, on la remplace
+            // Update image
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
             {
                 var imagesFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+
                 if (!Directory.Exists(imagesFolder))
                     Directory.CreateDirectory(imagesFolder);
 

@@ -46,61 +46,32 @@ namespace Examen.Web.Controllers
                 if (dto == null || !ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                // Vérification doublon
-                if (_serviceProduit.GetById(dto.CodeArticle?.Trim().ToUpper()) != null)
-                {
-                    return BadRequest($"Un produit avec le code '{dto.CodeArticle}' existe déjà.");
-                }
+                var codeArticle = (dto.CodeArticle ?? "").Trim().ToUpper();
+
+                if (_serviceProduit.GetById(codeArticle) != null)
+                    return BadRequest($"Le code {codeArticle} existe déjà.");
 
                 var produit = new Produit
                 {
-                    CodeArticle = (dto.CodeArticle ?? "").Trim().ToUpper(),
+                    CodeArticle = codeArticle,
                     NomProduit = (dto.NomProduit ?? "").Trim(),
                     Designation = (dto.Designation ?? "").Trim(),
-                    TailleEchantillonnage = dto.TailleEchantillonnage,
-                    TypeDefauts = new List<TypeDefaut>()
+                    TailleEchantillonnage = dto.TailleEchantillonnage
                 };
 
-                // Ajout des défauts
-                if (dto.TypeDefautIds?.Any() == true)
-                {
-                    var defauts = _serviceProduit.GetAllTypeDefauts()
-                        .Where(d => dto.TypeDefautIds.Contains(d.Id))
-                        .ToList();
-
-                    if (defauts.Count != dto.TypeDefautIds.Count)
-                        return BadRequest("Un ou plusieurs types de défauts n'existent pas.");
-
-                    foreach (var defaut in defauts)
-                    {
-                        produit.TypeDefauts.Add(defaut);
-                    }
-                }
+                // ❌ Supprimé : TypeDefaut n'a plus de relation avec Produit
 
                 _serviceProduit.Add(produit);
                 _serviceProduit.Commit();
 
-                // 🔥 SOLUTION : On retourne uniquement les infos nécessaires (pas l'entité complète)
-                return Ok(new
-                {
-                    success = true,
-                    message = "Produit ajouté avec succès !",
-                    codeArticle = produit.CodeArticle
-                });
+                return Ok(new { success = true, message = "Produit ajouté avec succès", codeArticle });
             }
             catch (Exception ex)
             {
-                Console.WriteLine("=== ERREUR AddProduit ===\n" + ex.ToString());
-
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de l'ajout du produit",
-                    detail = ex.Message,
-                    inner = ex.InnerException?.Message
-                });
+                return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
             }
         }
+
         [HttpDelete("{code}")]
         public IActionResult DeleteProduit(string code)
         {
@@ -122,8 +93,6 @@ namespace Examen.Web.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine("=== ERREUR DeleteProduit ===\n" + ex.ToString());
-
                 return StatusCode(500, new
                 {
                     success = false,
@@ -133,6 +102,7 @@ namespace Examen.Web.Controllers
                 });
             }
         }
+
         [HttpPut("{code}")]
         public IActionResult UpdateProduit(string code, [FromBody] ProduitDTO dto)
         {
@@ -145,31 +115,11 @@ namespace Examen.Web.Controllers
                 if (produit == null)
                     return NotFound($"Produit avec le code {code} introuvable.");
 
-                // Mise à jour des propriétés (sécurisée)
                 produit.NomProduit = (dto.NomProduit ?? produit.NomProduit)?.Trim() ?? produit.NomProduit;
                 produit.Designation = (dto.Designation ?? produit.Designation)?.Trim() ?? produit.Designation;
                 produit.TailleEchantillonnage = dto.TailleEchantillonnage;
 
-                // Mise à jour des TypeDefauts (remplace tout)
-                if (dto.TypeDefautIds != null)
-                {
-                    produit.TypeDefauts.Clear();   // Supprime les anciennes relations
-
-                    if (dto.TypeDefautIds.Any())
-                    {
-                        var defautsExistants = _serviceProduit.GetAllTypeDefauts()
-                            .Where(d => dto.TypeDefautIds.Contains(d.Id))
-                            .ToList();
-
-                        if (defautsExistants.Count != dto.TypeDefautIds.Count)
-                            return BadRequest("Un ou plusieurs TypeDefautIds sont invalides.");
-
-                        foreach (var defaut in defautsExistants)
-                        {
-                            produit.TypeDefauts.Add(defaut);
-                        }
-                    }
-                }
+                // ❌ Supprimé : TypeDefaut n'a plus de relation avec Produit
 
                 _serviceProduit.Update(produit);
                 _serviceProduit.Commit();
@@ -178,7 +128,6 @@ namespace Examen.Web.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine("=== ERREUR UpdateProduit ===\n" + ex.ToString());
                 return StatusCode(500, new { Message = ex.Message, Inner = ex.InnerException?.Message });
             }
         }

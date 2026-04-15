@@ -6,6 +6,8 @@ using Examen.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
+using BCrypt.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,9 +46,15 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+
+        IssuerSigningKey = new SymmetricSecurityKey(
+           Encoding.UTF8.GetBytes(key)
+       ),
+
+        RoleClaimType = ClaimTypes.Role // ✅ IMPORTANT
     };
 });
 
@@ -66,6 +74,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("123"));
 var app = builder.Build();
 
 // ───────────── Middleware ─────────────

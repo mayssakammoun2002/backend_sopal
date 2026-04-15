@@ -6,7 +6,7 @@ namespace Examen.ApplicationCore.Domain
     public class Produit
     {
         [Key]
-        [MaxLength(20)]
+        [MaxLength(50)]
         [Required(ErrorMessage = "Le code article est obligatoire")]
         public string CodeArticle { get; set; }
 
@@ -19,13 +19,15 @@ namespace Examen.ApplicationCore.Domain
             ErrorMessage = "La désignation doit contenir entre 3 et 100 caractères")]
         public string Designation { get; set; }
 
+        [Required(ErrorMessage = "La taille d'échantillonnage est obligatoire")]
         [Range(1, 1000, ErrorMessage = "La taille d'échantillonnage doit être entre 1 et 1000")]
         public int TailleEchantillonnage { get; set; }
 
+        [Required(ErrorMessage = "La cadence est obligatoire")]
         [Range(1, 10000, ErrorMessage = "La cadence doit être entre 1 et 10000")]
         public int Cadence { get; set; }
 
-        // Relation : 1 Produit → plusieurs TypeDefaut
-        public ICollection<TypeDefaut> TypeDefauts { get; set; } = new List<TypeDefaut>();
+        public ICollection<ResultatControle> ResultatControles { get; set; } = new List<ResultatControle>();
+
     }
 }

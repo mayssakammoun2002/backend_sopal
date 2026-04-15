@@ -7,9 +7,9 @@ namespace Examen.ApplicationCore.Interfaces
     {
         IEnumerable<TypeDefaut> GetAll();
         TypeDefaut GetById(int id);
+
         void Add(TypeDefaut typeDefaut);
         void Update(TypeDefaut typeDefaut);
         void Delete(TypeDefaut typeDefaut);
-        void Commit();
     }
 }

@@ -1,8 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35222.181
+# SQL Server Management Studio Version 22
+VisualStudioVersion = 18.4.11612.150 stable
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Éléments de solution", "Éléments de solution", "{D15B184A-FF7A-48BE-9A43-8C16C6F5DA5C}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examen.UI.Web", "Examen.UI.Web\Examen.UI.Web.csproj", "{6CA5F66D-788A-4E5D-BF17-917FCF0B9B80}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examen.UI.Console", "Examen.UI.Console\Examen.UI.Console.csproj", "{A36C1EB8-4BA4-4B5A-A027-79D7E168B7B8}"

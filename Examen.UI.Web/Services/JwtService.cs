@@ -9,6 +9,7 @@ namespace Examen.ApplicationCore.Services
     public class JwtService
     {
         private readonly IConfiguration _config;
+
         public JwtService(IConfiguration config)
         {
             _config = config;
@@ -18,12 +19,15 @@ namespace Examen.ApplicationCore.Services
         {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                new Claim(ClaimTypes.Email, user.Email), // ✅ FIX
                 new Claim("id", user.Id.ToString()),
                 new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_config["Jwt:Key"])
+            );
+
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
