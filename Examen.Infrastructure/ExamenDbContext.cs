@@ -69,9 +69,6 @@ namespace Examen.Infrastructure.Data
                       .IsRequired()
                       .HasMaxLength(20);
 
-                entity.Property(e => e.CodeArticle)
-                      .IsRequired()
-                      .HasMaxLength(20);
 
                 entity.Property(e => e.NumOF)
                       .IsRequired()
@@ -94,13 +91,12 @@ namespace Examen.Infrastructure.Data
                       .WithMany(m => m.ResultatControles)
                       .HasForeignKey(r => r.CodeMachine)
                       .OnDelete(DeleteBehavior.Restrict);
-
-                // --- Relation avec Produit ---
-                entity.HasOne(r => r.Produit)
-                      .WithMany(p => p.ResultatControles)
-                      .HasForeignKey(r => r.CodeArticle)
-                      .OnDelete(DeleteBehavior.Restrict);
-
+                // --- Relation avec Produit --- REMPLACER PAR :
+                entity.Ignore(r => r.Produit);
+                entity.Property(e => e.CodeArticle)
+                      .IsRequired()
+                      .HasMaxLength(20)
+                      .HasColumnName("CodeArticle");
                 // --- Relation avec Utilisateur ---
                 entity.HasOne(r => r.Utilisateur)
                       .WithMany(u => u.ResultatControles)

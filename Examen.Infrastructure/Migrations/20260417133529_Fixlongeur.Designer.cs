@@ -4,6 +4,7 @@ using Examen.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Examen.Infrastructure.Migrations
 {
     [DbContext(typeof(ExamenDbContext))]
-    partial class ExamenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260417133529_Fixlongeur")]
+    partial class Fixlongeur
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,29 @@ namespace Examen.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("Examen.ApplicationCore.Domain.Machine", b =>
+                {
+                    b.Property<string>("CodeMachine")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("Actif")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NomMachine")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("CodeMachine");
+
+                    b.ToTable("Machines");
+                });
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Produit", b =>
                 {
@@ -211,28 +237,9 @@ namespace Examen.Infrastructure.Migrations
                     b.ToTable("Utilisateurs");
                 });
 
-            modelBuilder.Entity("Machine", b =>
-                {
-                    b.Property<string>("CodeMachine")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<bool>("Actif")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NomMachine")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("CodeMachine");
-
-                    b.ToTable("Machines");
-                });
-
             modelBuilder.Entity("Examen.ApplicationCore.Domain.ResultatControle", b =>
                 {
-                    b.HasOne("Machine", "Machine")
+                    b.HasOne("Examen.ApplicationCore.Domain.Machine", "Machine")
                         .WithMany("ResultatControles")
                         .HasForeignKey("CodeMachine")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -267,17 +274,17 @@ namespace Examen.Infrastructure.Migrations
                     b.Navigation("Utilisateur");
                 });
 
+            modelBuilder.Entity("Examen.ApplicationCore.Domain.Machine", b =>
+                {
+                    b.Navigation("ResultatControles");
+                });
+
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Produit", b =>
                 {
                     b.Navigation("ResultatControles");
                 });
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Utilisateur", b =>
-                {
-                    b.Navigation("ResultatControles");
-                });
-
-            modelBuilder.Entity("Machine", b =>
                 {
                     b.Navigation("ResultatControles");
                 });

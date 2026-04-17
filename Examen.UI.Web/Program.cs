@@ -7,30 +7,29 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Security.Claims;
-using BCrypt.Net;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ───────────── Services / DI ─────────────
+// ✅ IMPORTANT : désactiver le mapping automatique des claims
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 builder.Services.AddControllers();
 
-// DbContext
 builder.Services.AddDbContext<ExamenDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// UnitOfWork + Repositories + Services
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IServiceMachine, ServiceMachine>();
 builder.Services.AddScoped<IServiceTypeDefaut, ServiceTypeDefaut>();
 builder.Services.AddScoped<IServiceProduit, ServiceProduit>();
 builder.Services.AddScoped<IServiceResultatControle, ServiceResultatControle>();
 builder.Services.AddScoped<IServiceUtilisateur, ServiceUtilisateur>();
-builder.Services.AddScoped<JwtService>(); // ✅ uniquement scoped
+builder.Services.AddScoped<JwtService>();
 
 var key = builder.Configuration["Jwt:Key"];
 
-// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -46,19 +45,16 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-
         IssuerSigningKey = new SymmetricSecurityKey(
-           Encoding.UTF8.GetBytes(key)
-       ),
-
-        RoleClaimType = ClaimTypes.Role // ✅ IMPORTANT
+            Encoding.UTF8.GetBytes(key)
+        ),
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = "id"
     };
 });
 
-// CORS pour le frontend Vite (port 5173)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowViteDev", policy =>
@@ -70,14 +66,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("123"));
 var app = builder.Build();
 
-// ───────────── Middleware ─────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -90,16 +83,9 @@ else
     app.UseExceptionHandler("/error");
 }
 
-// CORS
 app.UseCors("AllowViteDev");
-
 app.UseStaticFiles();
-
-// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Controllers
 app.MapControllers();
-
 app.Run();

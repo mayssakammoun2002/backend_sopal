@@ -23,4 +23,4 @@ namespace Examen.ApplicationCore.DTOs
         public string Token { get; set; }  
 
     }
-}
+} 

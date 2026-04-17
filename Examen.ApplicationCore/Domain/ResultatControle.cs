@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Examen.ApplicationCore.Domain;
 
 namespace Examen.ApplicationCore.Domain
@@ -51,7 +52,8 @@ namespace Examen.ApplicationCore.Domain
 
         // === Navigation Properties ===
         public Machine Machine { get; set; } = null!;
-        public Produit Produit { get; set; } = null!;
+        [NotMapped]
+        public Produit? Produit { get; set; }
         public Utilisateur Utilisateur { get; set; } = null!;
         public TypeDefaut? TypeDefaut1 { get; set; }
         public TypeDefaut? TypeDefaut2 { get; set; }

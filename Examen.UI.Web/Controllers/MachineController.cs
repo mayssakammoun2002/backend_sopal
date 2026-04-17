@@ -44,26 +44,34 @@ namespace Examen.Web.Controllers
         }
 
         [HttpPut("{code}")]
-        public IActionResult UpdateMachine(string code, Machine machine)
+        public IActionResult UpdateMachine(string code, [FromBody] Machine machine)
         {
-            if (code != machine.CodeMachine)
-                return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            _serviceMachine.Update(machine);
-            _serviceMachine.Commit();
+            var existing = _serviceMachine.GetById(code);
 
-            return NoContent();
-        }
-
-        [HttpDelete("{code}")]
-        public IActionResult DeleteMachine(string code)
-        {
-            var machine = _serviceMachine.GetById(code);
-
-            if (machine == null)
+            if (existing == null)
                 return NotFound();
 
-            _serviceMachine.Delete(machine);
+            // 🔥 Si le code change
+            if (code != machine.CodeMachine)
+            {
+                // Supprimer ancien
+                _serviceMachine.Delete(existing);
+
+                // Ajouter nouveau
+                _serviceMachine.Add(machine);
+            }
+            else
+            {
+                // Modification normale
+                existing.NomMachine = machine.NomMachine;
+                existing.Actif = machine.Actif;
+
+                _serviceMachine.Update(existing);
+            }
+
             _serviceMachine.Commit();
 
             return NoContent();
