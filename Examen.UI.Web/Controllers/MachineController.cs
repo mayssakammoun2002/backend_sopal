@@ -54,24 +54,13 @@ namespace Examen.Web.Controllers
             if (existing == null)
                 return NotFound();
 
-            // 🔥 Si le code change
-            if (code != machine.CodeMachine)
-            {
-                // Supprimer ancien
-                _serviceMachine.Delete(existing);
+            // ❌ NE PAS gérer changement de clé
 
-                // Ajouter nouveau
-                _serviceMachine.Add(machine);
-            }
-            else
-            {
-                // Modification normale
-                existing.NomMachine = machine.NomMachine;
-                existing.Actif = machine.Actif;
+            existing.CodeMachine = machine.CodeMachine; // OK si pas FK critique
+            existing.NomMachine = machine.NomMachine;
+            existing.Actif = machine.Actif;
 
-                _serviceMachine.Update(existing);
-            }
-
+            _serviceMachine.Update(existing);
             _serviceMachine.Commit();
 
             return NoContent();
