@@ -1,5 +1,7 @@
 ﻿using Examen.ApplicationCore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace Examen.Infrastructure.Data
 {
@@ -15,7 +17,11 @@ namespace Examen.Infrastructure.Data
         public DbSet<ResultatControle> ResultatControles { get; set; }
         public DbSet<TypeDefaut> TypeDefauts { get; set; }
         public DbSet<Utilisateur> Utilisateurs { get; set; }
-
+        // ── Nouvelles tables notifications ────────────────────────────────
+        public DbSet<Seuil> Seuils { get; set; }
+        public DbSet<Alerte> Alertes { get; set; }
+        public DbSet<HistoriqueNotification> HistoriqueNotifications { get; set; }
+        public DbSet<DestinataireNotification> DestinatairesNotification { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ====================== CLÉS PRIMAIRES ======================
@@ -154,6 +160,123 @@ namespace Examen.Infrastructure.Data
                 .Property(u => u.LastName)
                 .IsRequired()
                 .HasMaxLength(50);
+
+            // ====================== SEUIL (nouveau) ======================
+            modelBuilder.Entity<Seuil>(e =>
+            {
+                e.ToTable("Seuils");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.CodeMachine).IsRequired().HasMaxLength(20);
+                e.Property(x => x.CodeArticle).HasMaxLength(20);
+                e.Property(x => x.SeuilPourcentage).HasColumnType("decimal(5,2)");
+
+                e.HasOne(x => x.Machine)
+                 .WithMany()
+                 .HasForeignKey(x => x.CodeMachine)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Produit)
+                 .WithMany()
+                 .HasForeignKey(x => x.CodeArticle)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.TypeDefaut1)
+                 .WithMany()
+                 .HasForeignKey(x => x.TypeDefaut1Id)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasMany(x => x.Alertes)
+                 .WithOne(a => a.Seuil)
+                 .HasForeignKey(a => a.SeuilId)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ====================== ALERTE (nouveau) ======================
+            modelBuilder.Entity<Alerte>(e =>
+            {
+                e.ToTable("Alertes");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.CodeMachine).IsRequired().HasMaxLength(20);
+                e.Property(x => x.CodeArticle).HasMaxLength(20);
+                e.Property(x => x.TauxDetecte).HasColumnType("decimal(5,2)");
+                e.Property(x => x.Niveau).HasConversion<byte>();
+                e.Property(x => x.Statut).HasConversion<byte>();
+                e.Property(x => x.Message).HasMaxLength(500);
+                e.Property(x => x.CommentaireResolution).HasMaxLength(1000);
+
+                e.HasOne(x => x.Machine)
+                 .WithMany()
+                 .HasForeignKey(x => x.CodeMachine)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.TypeDefaut1)
+                 .WithMany()
+                 .HasForeignKey(x => x.TypeDefaut1Id)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.TypeDefaut2)
+                 .WithMany()
+                 .HasForeignKey(x => x.TypeDefaut2Id)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.ResolusePar)
+                 .WithMany()
+                 .HasForeignKey(x => x.ResolueParId)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasIndex(x => x.DateAlerte);
+                e.HasIndex(x => x.Statut);
+                e.HasIndex(x => x.CodeMachine);
+            });
+
+            // ====================== HISTORIQUE NOTIFICATION (nouveau) ======================
+            modelBuilder.Entity<HistoriqueNotification>(e =>
+            {
+                e.ToTable("HistoriqueNotifications");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Canal).HasConversion<byte>();
+                e.Property(x => x.Statut).HasConversion<byte>();
+                e.Property(x => x.Destinataire).IsRequired().HasMaxLength(255);
+                e.Property(x => x.Sujet).HasMaxLength(255);
+                e.Property(x => x.Corps).HasColumnType("nvarchar(max)");
+                e.Property(x => x.ErreurMessage).HasMaxLength(500);
+
+                e.HasOne(x => x.Alerte)
+                 .WithMany(a => a.Notifications)
+                 .HasForeignKey(x => x.AlerteId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Utilisateur)
+                 .WithMany()
+                 .HasForeignKey(x => x.UtilisateurId)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasIndex(x => x.AlerteId);
+                e.HasIndex(x => x.Statut);
+            });
+
+            // ====================== DESTINATAIRE NOTIFICATION (nouveau) ======================
+            modelBuilder.Entity<DestinataireNotification>(e =>
+            {
+                e.ToTable("DestinatairesNotification");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Canal).HasConversion<byte>();
+                e.Property(x => x.NiveauMinimum).HasConversion<byte>();
+                e.Property(x => x.Destinataire).IsRequired().HasMaxLength(255);
+                e.Property(x => x.Role).HasMaxLength(50);
+
+                e.HasOne(x => x.Utilisateur)
+                 .WithMany()
+                 .HasForeignKey(x => x.UtilisateurId)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
 
             base.OnModelCreating(modelBuilder);
         }
