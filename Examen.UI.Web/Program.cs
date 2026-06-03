@@ -11,7 +11,6 @@ using System.IdentityModel.Tokens.Jwt;
 using Examen.Infrastructure;
 using Examen.Web.Controllers;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -22,25 +21,33 @@ builder.Services.AddDbContext<ExamenDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
+// ── Repositories / UnitOfWork ─────────────────────────────────────────────
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// ── Services métier ───────────────────────────────────────────────────────
 builder.Services.AddScoped<IServiceMachine, ServiceMachine>();
 builder.Services.AddScoped<IServiceTypeDefaut, ServiceTypeDefaut>();
 builder.Services.AddScoped<IServiceProduit, ServiceProduit>();
 builder.Services.AddScoped<IServiceResultatControle, ServiceResultatControle>();
 builder.Services.AddScoped<IServiceUtilisateur, ServiceUtilisateur>();
+builder.Services.AddHttpClient<IServicePredictionDefaut, ServicePredictionDefaut>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ReportService>();
+
+// ── Notifications ─────────────────────────────────────────────────────────
 builder.Services.AddScoped<INotificationService, ServiceNotification>();
-// ── ✅ NOUVEAU : SignalR ───────────────────────────────────────────────────
-builder.Services.AddSignalR();
 
-// ── ✅ NOUVEAU : Services notifications ───────────────────────────────────
-builder.Services.AddScoped<AlerteService>();
-
-// ── ✅ NOUVEAU : Background Service (vérifie seuils toutes les X minutes) ─
+// ── Alertes ───────────────────────────────────────────────────────────────
+// ✅ Une seule ligne (suppression du doublon AddScoped<AlerteService>)
 builder.Services.AddScoped<IServiceAlerte, AlerteService>();
 
-// ── JWT (inchangé) ────────────────────────────────────────────────────────
+// ✅ Background service qui vérifie les seuils toutes les 5 minutes
+builder.Services.AddHostedService<AlerteBackgroundService>();
+
+// ── SignalR ───────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+
+// ── JWT ───────────────────────────────────────────────────────────────────
 var key = builder.Configuration["Jwt:Key"];
 builder.Services.AddAuthentication(options =>
 {
@@ -52,7 +59,7 @@ builder.Services.AddAuthentication(options =>
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
 
-    // ✅ NOUVEAU : SignalR envoie le token via query string
+    // ✅ SignalR envoie le token via query string
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -83,7 +90,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ── CORS (inchangé + AllowCredentials déjà présent = OK pour SignalR) ────
+// ── CORS ──────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowViteDev", policy =>
@@ -119,7 +126,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── ✅ NOUVEAU : Route SignalR Hub ────────────────────────────────────────
+// ── Route SignalR Hub ─────────────────────────────────────────────────────
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

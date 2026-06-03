@@ -63,7 +63,7 @@ namespace Examen.Web.Controllers
                         h.ErreurMessage,
                         h.NbTentatives,
                         NiveauAlerte = h.Alerte.Niveau.ToString(),
-                        h.Alerte.MachineId
+                        h.Alerte.CodeMachine
                     })
                     .ToListAsync();
 

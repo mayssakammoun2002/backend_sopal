@@ -4,6 +4,7 @@ using Examen.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Examen.Infrastructure.Migrations
 {
     [DbContext(typeof(ExamenDbContext))]
-    partial class ExamenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260521085954_InitA")]
+    partial class InitA
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -193,6 +196,10 @@ namespace Examen.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("MessageErreur")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("NbTentatives")
                         .HasColumnType("int");
 
@@ -215,49 +222,6 @@ namespace Examen.Infrastructure.Migrations
                     b.HasIndex("UtilisateurId");
 
                     b.ToTable("HistoriqueNotifications", (string)null);
-                });
-
-            modelBuilder.Entity("Examen.ApplicationCore.Domain.PredictionDefaut", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("DatePrediction")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("EstDefectueux")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NiveauRisque")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<double>("Probabilite")
-                        .HasColumnType("float");
-
-                    b.Property<string>("ResultatControleId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(36)");
-
-                    b.Property<int?>("TypeDefautPreditId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UtilisateurId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResultatControleId");
-
-                    b.HasIndex("TypeDefautPreditId");
-
-                    b.HasIndex("UtilisateurId");
-
-                    b.ToTable("PredictionsDefauts");
                 });
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Produit", b =>
@@ -575,29 +539,6 @@ namespace Examen.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Alerte");
-
-                    b.Navigation("Utilisateur");
-                });
-
-            modelBuilder.Entity("Examen.ApplicationCore.Domain.PredictionDefaut", b =>
-                {
-                    b.HasOne("Examen.ApplicationCore.Domain.ResultatControle", "ResultatControle")
-                        .WithMany()
-                        .HasForeignKey("ResultatControleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Examen.ApplicationCore.Domain.TypeDefaut", "TypeDefautPredit")
-                        .WithMany()
-                        .HasForeignKey("TypeDefautPreditId");
-
-                    b.HasOne("Examen.ApplicationCore.Domain.Utilisateur", "Utilisateur")
-                        .WithMany()
-                        .HasForeignKey("UtilisateurId");
-
-                    b.Navigation("ResultatControle");
-
-                    b.Navigation("TypeDefautPredit");
 
                     b.Navigation("Utilisateur");
                 });

@@ -6,7 +6,7 @@ namespace Examen.ApplicationCore.Domain
     {
         public int Id { get; set; }
         public int AlerteId { get; set; }
-        public int UtilisateurId { get; set; }   
+        public int UtilisateurId { get; set; }
         public CanalNotification Canal { get; set; }
         public string Destinataire { get; set; } = string.Empty;
         public string? Sujet { get; set; }
@@ -20,7 +20,6 @@ namespace Examen.ApplicationCore.Domain
         // Navigation
         public Alerte Alerte { get; set; } = null!;
         public Utilisateur? Utilisateur { get; set; }
-        public string MessageErreur { get; internal set; }
     }
 
     public enum CanalNotification { Email = 0, SMS = 1, InApp = 2 }

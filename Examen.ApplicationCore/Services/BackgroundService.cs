@@ -1,51 +1,48 @@
-﻿using Examen.ApplicationCore.Services;
+﻿using Examen.ApplicationCore.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Examen.Infrastructure
 {
-    /// <summary>
-    /// Service en arrière-plan qui vérifie les seuils d'alertes périodiquement
-    /// </summary>
     public class AlerteBackgroundService : BackgroundService
     {
         private readonly ILogger<AlerteBackgroundService> _logger;
-        private readonly IServiceProvider _serviceProvider;
-        private readonly TimeSpan _interval = TimeSpan.FromMinutes(5); // Vérifier toutes les 5 minutes
+        private readonly IServiceProvider _sp;
+        private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
 
-        public AlerteBackgroundService(ILogger<AlerteBackgroundService> logger, IServiceProvider serviceProvider)
+        public AlerteBackgroundService(ILogger<AlerteBackgroundService> logger, IServiceProvider sp)
         {
             _logger = logger;
-            _serviceProvider = serviceProvider;
+            _sp = sp;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken ct)
         {
-            _logger.LogInformation("🚀 AlerteBackgroundService démarré");
-
-            while (!stoppingToken.IsCancellationRequested)
+            _logger.LogInformation("🚀 AlerteBackgroundService démarré (intervalle : {I})", _interval);
+            await RunCycle();
+            while (!ct.IsCancellationRequested)
             {
-                try
-                {
-                    using (var scope = _serviceProvider.CreateScope())
-                    {
-                        var alerteService = scope.ServiceProvider.GetRequiredService<AlerteService>();
-
-                        _logger.LogInformation("⏰ Vérification des seuils d'alertes...");
-                        await alerteService.VerifierSeuilsAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"❌ Erreur lors de la vérification des seuils : {ex.Message}");
-                }
-
-                // Attendre l'intervalle avant la prochaine vérification
-                await Task.Delay(_interval, stoppingToken);
+                try { await Task.Delay(_interval, ct); }
+                catch (OperationCanceledException) { break; }
+                await RunCycle();
             }
+            _logger.LogInformation("🛑 AlerteBackgroundService arrêté.");
+        }
 
-            _logger.LogInformation("🛑 AlerteBackgroundService arrêté");
+        private async Task RunCycle()
+        {
+            try
+            {
+                using var scope = _sp.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<IServiceAlerte>(); // ✅ interface
+                _logger.LogInformation("⏰ [{T}] Vérification des seuils...", DateTime.UtcNow);
+                await svc.VerifierSeuilsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Erreur cycle vérification seuils");
+            }
         }
     }
 }

@@ -11,78 +11,90 @@ namespace Examen.Web.Controllers
     [Authorize]
     public class AlertesController : ControllerBase
     {
-        private readonly IServiceAlerte _alerteService;
-
-        public AlertesController(IServiceAlerte alerteService)
-        {
-            _alerteService = alerteService;
-        }
+        private readonly IServiceAlerte _svc;
+        public AlertesController(IServiceAlerte svc) => _svc = svc;
 
         // GET /api/alertes
         [HttpGet]
-        public IActionResult GetAll()
-        {
-            var alertes = _alerteService.GetAll().ToList();
-            return Ok(alertes);
-        }
-
-        // GET /api/alertes/{id}
-        [HttpGet("{id}")]
-        public IActionResult GetById(int id)
-        {
-            var alerte = _alerteService.GetById(id);
-            if (alerte == null)
-                return NotFound(new { message = $"Alerte {id} introuvable" });
-
-            return Ok(alerte);
-        }
+        public IActionResult GetAll() =>
+            Ok(_svc.GetAll().OrderByDescending(a => a.DateAlerte));
 
         // GET /api/alertes/actives
         [HttpGet("actives")]
-        public IActionResult GetActives()
-        {
-            var alertes = _alerteService.GetAll()
-                .Where(a => a.Statut == StatutAlerte.Nouvelle || a.Statut == StatutAlerte.EnCours)
-                .OrderByDescending(a => a.DateAlerte)
-                .ToList();
+        public IActionResult GetActives() => Ok(_svc.GetActives());
 
-            return Ok(alertes);
+        // GET /api/alertes/{id}
+        [HttpGet("{id:int}")]
+        public IActionResult GetById(int id)
+        {
+            var a = _svc.GetById(id);
+            return a == null ? NotFound(Msg($"Alerte {id} introuvable.")) : Ok(a);
+        }
+
+        // PUT /api/alertes/{id}/prendre-en-charge
+        [HttpPut("{id:int}/prendre-en-charge")]
+        public IActionResult PrendreEnCharge(int id)
+        {
+            try { _svc.PrendreEnChargeAlerte(id, UserId()); return Ok(Msg("Alerte prise en charge.")); }
+            catch (KeyNotFoundException ex) { return NotFound(Msg(ex.Message)); }
+            catch (InvalidOperationException ex) { return BadRequest(Msg(ex.Message)); }
         }
 
         // PUT /api/alertes/{id}/resoudre
-        [HttpPut("{id}/resoudre")]
-        public IActionResult Resoudre(int id, [FromBody] ResoudreAlerteDto dto)
+        [HttpPut("{id:int}/resoudre")]
+        public IActionResult Resoudre(int id, [FromBody] ActionDto dto)
         {
-            var userId = int.Parse(User.FindFirstValue("id") ?? "0");
-
-            try
-            {
-                _alerteService.ResoudreAlerte(id, userId, dto.Commentaire ?? "");
-                return Ok(new { message = "Alerte résolue avec succès" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            try { _svc.ResoudreAlerte(id, UserId(), dto.Commentaire ?? ""); return Ok(Msg("Alerte résolue.")); }
+            catch (KeyNotFoundException ex) { return NotFound(Msg(ex.Message)); }
+            catch (InvalidOperationException ex) { return BadRequest(Msg(ex.Message)); }
         }
 
-        // DELETE /api/alertes/{id}
-        [HttpDelete("{id}")]
+        // PUT /api/alertes/{id}/ignorer
+        [HttpPut("{id:int}/ignorer")]
+        public IActionResult Ignorer(int id, [FromBody] ActionDto dto)
+        {
+            try { _svc.IgnorerAlerte(id, UserId(), dto.Commentaire ?? ""); return Ok(Msg("Alerte ignorée.")); }
+            catch (KeyNotFoundException ex) { return NotFound(Msg(ex.Message)); }
+            catch (InvalidOperationException ex) { return BadRequest(Msg(ex.Message)); }
+        }
+
+        // GET /api/alertes/{id}/commentaires
+        [HttpGet("{id:int}/commentaires")]
+        public IActionResult GetCommentaires(int id)
+        {
+            if (_svc.GetById(id) == null) return NotFound(Msg($"Alerte {id} introuvable."));
+            return Ok(_svc.GetCommentaires(id));
+        }
+
+        // POST /api/alertes/{id}/commentaires
+        [HttpPost("{id:int}/commentaires")]
+        public IActionResult AjouterCommentaire(int id, [FromBody] CommentaireDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Contenu))
+                return BadRequest(Msg("Le contenu est obligatoire."));
+            var nom = User.FindFirstValue(ClaimTypes.Name) ?? $"Utilisateur {UserId()}";
+            try { _svc.AjouterCommentaire(id, UserId(), nom, dto.Contenu); return Ok(Msg("Commentaire ajouté.")); }
+            catch (KeyNotFoundException ex) { return NotFound(Msg(ex.Message)); }
+            catch (ArgumentException ex) { return BadRequest(Msg(ex.Message)); }
+        }
+
+        // DELETE /api/alertes/{id}  — Admin only
+        [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         public IActionResult Delete(int id)
         {
-            var alerte = _alerteService.GetById(id);
-            if (alerte == null)
-                return NotFound(new { message = $"Alerte {id} introuvable" });
-
-            _alerteService.Delete(alerte);
-            _alerteService.Commit();
+            var a = _svc.GetById(id);
+            if (a == null) return NotFound(Msg($"Alerte {id} introuvable."));
+            _svc.Delete(a); _svc.Commit();
             return NoContent();
         }
+
+        private int UserId() =>
+            int.TryParse(User.FindFirstValue("id"), out var id) ? id : 0;
+
+        private static object Msg(string m) => new { message = m };
     }
 
-    public class ResoudreAlerteDto
-    {
-        public string? Commentaire { get; set; }
-    }
+    public record ActionDto(string? Commentaire);
+    public record CommentaireDto(string Contenu);
 }

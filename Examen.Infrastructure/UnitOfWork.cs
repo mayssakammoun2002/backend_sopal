@@ -1,8 +1,6 @@
-﻿using AM.ApplicationCore.Interfaces;
-using AM.Infrastructure;
-using Examen.ApplicationCore.Interfaces;   // ← garde celui-là (ou AM si c'est vraiment l'interface utilisée)
+﻿using Examen.ApplicationCore.Interfaces;  // ✅ seule source de IGenericRepository
 using Examen.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using AM.Infrastructure;                  // ✅ GenericRepository (implémentation)
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -27,24 +25,16 @@ namespace Examen.Infrastructure
             {
                 var repoType = typeof(GenericRepository<>).MakeGenericType(type);
                 repo = Activator.CreateInstance(repoType, _context)
-                    ?? throw new InvalidOperationException($"Impossible de créer le repository pour {type.Name}");
+                    ?? throw new InvalidOperationException(
+                        $"Impossible de créer le repository pour {type.Name}");
                 _repositories[type] = repo;
             }
             return (IGenericRepository<TEntity>)repo;
         }
 
-        // ────────────────────────────────────────────────
-        // Méthode corrigée : void au lieu de int
-        // ────────────────────────────────────────────────
-        public void Save()
-        {
-            _context.SaveChanges();
-        }
-
-        public async Task<int> SaveAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
+        public void Save() => _context.SaveChanges();
+        public async Task<int> SaveAsync() => await _context.SaveChangesAsync();
+        public void Commit() => Save();
 
         public void Dispose()
         {
@@ -54,11 +44,6 @@ namespace Examen.Infrastructure
                 _repositories.Clear();
                 _disposed = true;
             }
-        }
-
-        public void Commit()
-        {
-            throw new NotImplementedException();
         }
     }
 }
