@@ -28,5 +28,8 @@ namespace Examen.ApplicationCore.Domain
         // Navigation
         public ICollection<ResultatControle> ResultatControles { get; set; }
             = new List<ResultatControle>();
+        public ICollection<Lot> Lots { get; set; } = new List<Lot>();
+
     }
+
 }

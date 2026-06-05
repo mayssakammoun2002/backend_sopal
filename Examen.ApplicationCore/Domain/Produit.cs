@@ -28,6 +28,6 @@ namespace Examen.ApplicationCore.Domain
         public int Cadence { get; set; }
 
         public ICollection<ResultatControle> ResultatControles { get; set; } = new List<ResultatControle>();
-
+        public ICollection<Lot> Lots { get; set; } = new List<Lot>();
     }
 }

@@ -16,4 +16,8 @@ public class Machine
     public bool Actif { get; set; } = true;
 
     public ICollection<ResultatControle> ResultatControles { get; set; }
+    [MaxLength(50)]
+    public string Statut { get; set; } = "Active";
+
+    public ICollection<Lot> Lots { get; set; } = new List<Lot>();
 }

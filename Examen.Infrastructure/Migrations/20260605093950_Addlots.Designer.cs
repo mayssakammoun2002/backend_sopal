@@ -4,6 +4,7 @@ using Examen.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Examen.Infrastructure.Migrations
 {
     [DbContext(typeof(ExamenDbContext))]
-    partial class ExamenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260605093950_Addlots")]
+    partial class Addlots
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -83,9 +86,6 @@ namespace Examen.Infrastructure.Migrations
                     b.Property<DateTime?>("DateResolution")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("LotId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -117,8 +117,6 @@ namespace Examen.Infrastructure.Migrations
                     b.HasIndex("CodeMachine");
 
                     b.HasIndex("DateAlerte");
-
-                    b.HasIndex("LotId");
 
                     b.HasIndex("ResolueParId");
 
@@ -330,9 +328,6 @@ namespace Examen.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int?>("LotId")
-                        .HasColumnType("int");
-
                     b.Property<int>("NbDefautsTest1")
                         .HasColumnType("int");
 
@@ -374,8 +369,6 @@ namespace Examen.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CodeMachine");
-
-                    b.HasIndex("LotId");
 
                     b.HasIndex("ProduitCodeArticle");
 
@@ -512,68 +505,6 @@ namespace Examen.Infrastructure.Migrations
                     b.ToTable("Utilisateurs");
                 });
 
-            modelBuilder.Entity("Lot", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Commentaire")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("DateDebut")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DateFin")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("MachineId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("NumeroLot")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("OperateurId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProduitId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("QuantitePrevue")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("QuantiteProduite")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Statut")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MachineId");
-
-                    b.HasIndex("OperateurId");
-
-                    b.HasIndex("ProduitId");
-
-                    b.ToTable("Lot");
-                });
-
             modelBuilder.Entity("Machine", b =>
                 {
                     b.Property<string>("CodeMachine")
@@ -584,11 +515,6 @@ namespace Examen.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("NomMachine")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Statut")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -616,10 +542,6 @@ namespace Examen.Infrastructure.Migrations
                         .HasForeignKey("CodeMachine")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Lot", null)
-                        .WithMany("Alertes")
-                        .HasForeignKey("LotId");
 
                     b.HasOne("Examen.ApplicationCore.Domain.Utilisateur", "ResoluePar")
                         .WithMany()
@@ -684,10 +606,6 @@ namespace Examen.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Lot", null)
-                        .WithMany("ResultatsControle")
-                        .HasForeignKey("LotId");
-
                     b.HasOne("Examen.ApplicationCore.Domain.Produit", null)
                         .WithMany("ResultatControles")
                         .HasForeignKey("ProduitCodeArticle");
@@ -742,33 +660,6 @@ namespace Examen.Infrastructure.Migrations
                     b.Navigation("TypeDefaut1");
                 });
 
-            modelBuilder.Entity("Lot", b =>
-                {
-                    b.HasOne("Machine", "Machine")
-                        .WithMany("Lots")
-                        .HasForeignKey("MachineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Examen.ApplicationCore.Domain.Utilisateur", "Operateur")
-                        .WithMany("Lots")
-                        .HasForeignKey("OperateurId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Examen.ApplicationCore.Domain.Produit", "Produit")
-                        .WithMany("Lots")
-                        .HasForeignKey("ProduitId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Machine");
-
-                    b.Navigation("Operateur");
-
-                    b.Navigation("Produit");
-                });
-
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Alerte", b =>
                 {
                     b.Navigation("Commentaires");
@@ -778,8 +669,6 @@ namespace Examen.Infrastructure.Migrations
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Produit", b =>
                 {
-                    b.Navigation("Lots");
-
                     b.Navigation("ResultatControles");
                 });
 
@@ -790,22 +679,11 @@ namespace Examen.Infrastructure.Migrations
 
             modelBuilder.Entity("Examen.ApplicationCore.Domain.Utilisateur", b =>
                 {
-                    b.Navigation("Lots");
-
                     b.Navigation("ResultatControles");
-                });
-
-            modelBuilder.Entity("Lot", b =>
-                {
-                    b.Navigation("Alertes");
-
-                    b.Navigation("ResultatsControle");
                 });
 
             modelBuilder.Entity("Machine", b =>
                 {
-                    b.Navigation("Lots");
-
                     b.Navigation("ResultatControles");
                 });
 #pragma warning restore 612, 618

@@ -31,6 +31,7 @@ builder.Services.AddScoped<IServiceProduit, ServiceProduit>();
 builder.Services.AddScoped<IServiceResultatControle, ServiceResultatControle>();
 builder.Services.AddScoped<IServiceUtilisateur, ServiceUtilisateur>();
 builder.Services.AddHttpClient<IServicePredictionDefaut, ServicePredictionDefaut>();
+builder.Services.AddScoped<IServiceLot, ServiceLot>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ReportService>();
 
@@ -43,6 +44,7 @@ builder.Services.AddScoped<IServiceAlerte, AlerteService>();
 
 // ✅ Background service qui vérifie les seuils toutes les 5 minutes
 builder.Services.AddHostedService<AlerteBackgroundService>();
+
 
 // ── SignalR ───────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();

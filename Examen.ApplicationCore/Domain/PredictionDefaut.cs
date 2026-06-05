@@ -38,5 +38,8 @@ namespace Examen.ApplicationCore.Domain
         // Explication SHAP sérialisée (JSON) — optionnel
         [Column(TypeName = "nvarchar(max)")]
         public string? ShapExplicationJson { get; set; }
+        // Ajoute cette propriété de navigation
+        [ForeignKey("TypeDefautPreditId")]
+        public TypeDefaut? TypeDefautPredit { get; set; }
     }
 }
