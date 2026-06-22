@@ -5,12 +5,9 @@ namespace Examen.ApplicationCore.Interfaces
 {
     public interface INotificationService
     {
+
         Task EnvoyerAlerteAsync(Alerte alerte);
-        Task EnvoyerEmailAsync(string destinataire, string sujet, string corps, int alerteId);
-        Task EnvoyerSmsAsync(string numeroTel, string message, int alerteId);
-        Task EnvoyerInAppAsync(string userId, string role, object payload);
-        void MarquerCommeLu(int notificationId);
-        Task MarquerCommeLuAsync(int id);
-        Task RetryFailedNotificationsAsync();
+        Task EnvoyerEmailAsync(string v1, string v2, string v3, int v4);
+        Task MarquerCommeLuAsync(int notificationId);
     }
 }

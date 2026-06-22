@@ -76,7 +76,6 @@ namespace Examen.ApplicationCore.Services
             if (string.IsNullOrWhiteSpace(dto.NumOF))
                 throw new ArgumentException("NumOF est obligatoire.");
 
-            // ✅ CORRECTION : utiliser dto.UtilisateurId.Value car c'est maintenant int?
             if (dto.UtilisateurId == null || dto.UtilisateurId <= 0)
                 throw new ArgumentException("UtilisateurId est obligatoire.");
             if (dto.Quantite <= 0)
@@ -84,41 +83,33 @@ namespace Examen.ApplicationCore.Services
             if (dto.Cadence <= 0)
                 throw new ArgumentException("Cadence doit être supérieure à 0.");
 
-            // Vérification Machine
             var machine = _unitOfWork.Repository<Machine>().GetAll()
                 .FirstOrDefault(m => m.CodeMachine.Trim().ToUpper() == dto.CodeMachine.Trim().ToUpper());
 
             if (machine == null)
                 throw new ArgumentException($"Machine '{dto.CodeMachine}' introuvable.");
 
-            // Vérification Utilisateur
-            // ✅ CORRECTION : .Value car UtilisateurId est int?
             var utilisateur = _unitOfWork.Repository<Utilisateur>().GetAll()
                 .FirstOrDefault(u => u.Id == dto.UtilisateurId.Value);
 
             if (utilisateur == null)
                 throw new ArgumentException($"Utilisateur ID {dto.UtilisateurId} introuvable.");
 
-            // ✅ Produit : on accepte les codes inconnus, pas de vérification bloquante
-            // On tente juste de récupérer le nom si disponible (optionnel)
-
             var resultat = new ResultatControle
             {
                 Id = GenerateUniqueId(),
-                DateControle = DateTime.UtcNow,
+                DateControle = dto.DateControle ?? DateTime.UtcNow,
                 CodeMachine = machine.CodeMachine,
                 CodeArticle = dto.CodeArticle.ToUpper().Trim(),
                 NumOF = dto.NumOF.Trim(),
                 Quantite = dto.Quantite,
                 Cadence = dto.Cadence,
-                // ✅ CORRECTION : .Value
                 UtilisateurId = dto.UtilisateurId.Value,
                 NbEchantillons = dto.NbEchantillons > 0 ? dto.NbEchantillons : 3,
                 NbDefautsTest1 = dto.NbDefautsTest1,
                 NbDefautsTest2 = dto.NbDefautsTest2,
                 SolutionGlobale = string.IsNullOrWhiteSpace(dto.SolutionGlobale)
                     ? null : dto.SolutionGlobale.Trim(),
-                // ✅ CORRECTION : Defaut1 et Defaut2 maintenant correctement mappés
                 Defaut1 = string.IsNullOrWhiteSpace(dto.Defaut1) ? null : dto.Defaut1.Trim(),
                 Defaut2 = string.IsNullOrWhiteSpace(dto.Defaut2) ? null : dto.Defaut2.Trim(),
                 StatutLot = (dto.NbDefautsTest1 + dto.NbDefautsTest2) <= 1 ? "Conforme" : "Non Conforme"
@@ -146,7 +137,6 @@ namespace Examen.ApplicationCore.Services
             if (string.IsNullOrWhiteSpace(dto.NumOF))
                 throw new ArgumentException("NumOF est obligatoire.");
 
-            // ✅ CORRECTION : int? → vérification null en plus de <= 0
             if (dto.UtilisateurId == null || dto.UtilisateurId <= 0)
                 throw new ArgumentException("UtilisateurId est obligatoire.");
             if (dto.Quantite <= 0)
@@ -160,7 +150,6 @@ namespace Examen.ApplicationCore.Services
             if (machine == null)
                 throw new ArgumentException($"Machine '{dto.CodeMachine}' introuvable.");
 
-            // ✅ CORRECTION : .Value
             var utilisateur = _unitOfWork.Repository<Utilisateur>().GetAll()
                 .FirstOrDefault(u => u.Id == dto.UtilisateurId.Value);
 
@@ -172,14 +161,12 @@ namespace Examen.ApplicationCore.Services
             existing.NumOF = dto.NumOF.Trim();
             existing.Quantite = dto.Quantite;
             existing.Cadence = dto.Cadence;
-            // ✅ CORRECTION : .Value
             existing.UtilisateurId = dto.UtilisateurId.Value;
             existing.NbEchantillons = dto.NbEchantillons > 0 ? dto.NbEchantillons : existing.NbEchantillons;
             existing.NbDefautsTest1 = dto.NbDefautsTest1;
             existing.NbDefautsTest2 = dto.NbDefautsTest2;
             existing.SolutionGlobale = string.IsNullOrWhiteSpace(dto.SolutionGlobale)
                 ? null : dto.SolutionGlobale.Trim();
-            // ✅ CORRECTION : Defaut1 et Defaut2 mis à jour
             existing.Defaut1 = string.IsNullOrWhiteSpace(dto.Defaut1) ? null : dto.Defaut1.Trim();
             existing.Defaut2 = string.IsNullOrWhiteSpace(dto.Defaut2) ? null : dto.Defaut2.Trim();
             existing.StatutLot = (dto.NbDefautsTest1 + dto.NbDefautsTest2) <= 1 ? "Conforme" : "Non Conforme";
@@ -206,6 +193,131 @@ namespace Examen.ApplicationCore.Services
             var resultat = GetById(id);
             _unitOfWork.Repository<ResultatControle>().Delete(resultat);
             _unitOfWork.Save();
+        }
+
+        // ====================== STATS (DASHBOARD) ======================
+        public ResultatControleStatsDTO GetStats(
+            string? codeMachine,
+            string? statut,
+            DateTime? dateDebut,
+            DateTime? dateFin,
+            int? utilisateurId)
+        {
+            try
+            {
+                var query = _unitOfWork.Repository<ResultatControle>().GetAll().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(codeMachine))
+                    query = query.Where(r => r.CodeMachine.Trim().ToUpper() == codeMachine.Trim().ToUpper());
+
+                if (!string.IsNullOrWhiteSpace(statut))
+                    query = query.Where(r => r.StatutLot == statut);
+
+                if (dateDebut.HasValue)
+                    query = query.Where(r => r.DateControle >= dateDebut.Value);
+
+                if (dateFin.HasValue)
+                    query = query.Where(r => r.DateControle <= dateFin.Value);
+
+                if (utilisateurId.HasValue && utilisateurId.Value > 0)
+                    query = query.Where(r => r.UtilisateurId == utilisateurId.Value);
+
+                var resultats = query.ToList();
+
+                var machines = _unitOfWork.Repository<Machine>().GetAll()
+                    .ToDictionary(m => m.CodeMachine.Trim().ToUpper(), m => m.NomMachine ?? "N/A");
+
+                // Table TypeDefaut (Id -> Libelle), utilisée pour mapper TypeDefaut1Id/TypeDefaut2Id
+                Dictionary<int, string> typesDefauts;
+                try
+                {
+                    typesDefauts = _unitOfWork.Repository<TypeDefaut>().GetAll()
+                        .ToDictionary(t => t.Id, t => string.IsNullOrWhiteSpace(t.NomDefaut) ? $"Défaut {t.Id}" : t.NomDefaut);
+                }
+                catch
+                {
+                    typesDefauts = new Dictionary<int, string>();
+                }
+
+                int total = resultats.Count;
+                int conformes = resultats.Count(r => r.StatutLot == "Conforme");
+                int nonConformes = total - conformes;
+                int totalDefauts = resultats.Sum(r => r.NbDefautsTest1 + r.NbDefautsTest2);
+
+                // === Par machine ===
+                var parMachine = resultats
+                    .GroupBy(r => r.CodeMachine ?? "INCONNU")
+                    .Select(g => new StatParMachineDTO
+                    {
+                        CodeMachine = g.Key,
+                        NomMachine = machines.TryGetValue(g.Key.Trim().ToUpper(), out var nom) ? nom : "N/A",
+                        TotalControles = g.Count(),
+                        Conformes = g.Count(x => x.StatutLot == "Conforme"),
+                        NonConformes = g.Count(x => x.StatutLot != "Conforme"),
+                        TauxConformite = g.Count() == 0 ? 0 : Math.Round(g.Count(x => x.StatutLot == "Conforme") * 100.0 / g.Count(), 1)
+                    })
+                    .OrderByDescending(x => x.TotalControles)
+                    .ToList();
+
+                // === Par type de défaut ===
+                // Priorité : TypeDefaut1Id/TypeDefaut2Id (table TypeDefaut) si renseignés,
+                // sinon fallback sur le texte libre Defaut1/Defaut2.
+                var defautCounts = new Dictionary<string, int>();
+                foreach (var r in resultats)
+                {
+                    if (r.NbDefautsTest1 > 0)
+                    {
+                        string libelle = r.TypeDefaut1Id.HasValue && typesDefauts.TryGetValue(r.TypeDefaut1Id.Value, out var l1)
+                            ? l1
+                            : (!string.IsNullOrWhiteSpace(r.Defaut1) ? r.Defaut1! : "Défaut non précisé");
+
+                        defautCounts[libelle] = defautCounts.GetValueOrDefault(libelle, 0) + r.NbDefautsTest1;
+                    }
+
+                    if (r.NbDefautsTest2 > 0)
+                    {
+                        string libelle = r.TypeDefaut2Id.HasValue && typesDefauts.TryGetValue(r.TypeDefaut2Id.Value, out var l2)
+                            ? l2
+                            : (!string.IsNullOrWhiteSpace(r.Defaut2) ? r.Defaut2! : "Défaut non précisé");
+
+                        defautCounts[libelle] = defautCounts.GetValueOrDefault(libelle, 0) + r.NbDefautsTest2;
+                    }
+                }
+
+                var parTypeDefaut = defautCounts
+                    .Select(kv => new StatParDefautDTO { Libelle = kv.Key, Occurrences = kv.Value })
+                    .OrderByDescending(x => x.Occurrences)
+                    .ToList();
+
+                // === Évolution par jour ===
+                var evolution = resultats
+                    .GroupBy(r => r.DateControle.Date)
+                    .Select(g => new StatParJourDTO
+                    {
+                        Date = g.Key,
+                        TotalControles = g.Count(),
+                        NonConformes = g.Count(x => x.StatutLot != "Conforme")
+                    })
+                    .OrderBy(x => x.Date)
+                    .ToList();
+
+                return new ResultatControleStatsDTO
+                {
+                    TotalControles = total,
+                    TotalConformes = conformes,
+                    TotalNonConformes = nonConformes,
+                    TauxConformite = total == 0 ? 0 : Math.Round(conformes * 100.0 / total, 1),
+                    TotalDefauts = totalDefauts,
+                    ParMachine = parMachine,
+                    ParTypeDefaut = parTypeDefaut,
+                    Evolution = evolution
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERREUR GetStats: {ex.Message}");
+                throw;
+            }
         }
 
         // ====================== ID UNIQUE ======================

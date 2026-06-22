@@ -131,6 +131,29 @@ namespace Examen.Web.Controllers
             }
         }
 
+        [HttpGet("stats")]
+        public IActionResult GetStats(
+            [FromQuery] string? codeMachine,
+            [FromQuery] string? statut,
+            [FromQuery] DateTime? dateDebut,
+            [FromQuery] DateTime? dateFin,
+            [FromQuery] int? utilisateurId)
+        {
+            try
+            {
+                var stats = _service.GetStats(codeMachine, statut, dateDebut, dateFin, utilisateurId);
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Erreur lors du calcul des statistiques",
+                    detail = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
+        }
         [HttpDelete("{id}")]
         public IActionResult Delete(string id)
         {

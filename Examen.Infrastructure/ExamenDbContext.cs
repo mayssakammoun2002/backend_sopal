@@ -134,27 +134,11 @@ namespace Examen.Infrastructure.Data
             // ====================== ALERTE ======================
             modelBuilder.Entity<Alerte>(e =>
             {
-                e.ToTable("Alertes");
-                e.HasKey(x => x.Id);
-
-                e.Property(x => x.CodeMachine).IsRequired().HasMaxLength(20);
-                e.Property(x => x.CodeArticle).HasMaxLength(20);
-                e.Property(x => x.TauxDetecte).HasColumnType("decimal(5,2)");
-                e.Property(x => x.Message).HasMaxLength(500);
-                e.Property(x => x.CommentaireResolution).HasMaxLength(1000);
-                e.Property(x => x.Niveau).HasConversion<byte>();
-                e.Property(x => x.Statut).HasConversion<byte>();
-
                 e.HasOne(x => x.Seuil)
                  .WithMany(s => s.Alertes)
                  .HasForeignKey(x => x.SeuilId)
-                 .OnDelete(DeleteBehavior.Restrict);
-
-                // ✅ FK = CodeMachine (string) — correspond à la PK de Machine
-                e.HasOne(x => x.Machine)
-                 .WithMany()
-                 .HasForeignKey(x => x.CodeMachine)
-                 .OnDelete(DeleteBehavior.Restrict);
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.SetNull);
 
                 e.HasOne(x => x.ResoluePar)
                  .WithMany()
@@ -174,9 +158,10 @@ namespace Examen.Infrastructure.Data
 
                 e.HasIndex(x => x.DateAlerte);
                 e.HasIndex(x => x.Statut);
-                e.HasIndex(x => x.CodeMachine); // ✅ remplace MachineId
+                e.HasIndex(x => x.CodeMachine);
                 e.HasIndex(x => x.SeuilId);
             });
+
             // ====================== COMMENTAIRE ALERTE ======================
             modelBuilder.Entity<CommentaireAlerte>(e =>
             {
@@ -196,7 +181,6 @@ namespace Examen.Infrastructure.Data
             {
                 e.ToTable("HistoriqueNotifications");
                 e.HasKey(x => x.Id);
-
                 e.Property(x => x.Canal).HasConversion<byte>();
                 e.Property(x => x.Statut).HasConversion<byte>();
                 e.Property(x => x.Destinataire).IsRequired().HasMaxLength(255);
@@ -209,16 +193,9 @@ namespace Examen.Infrastructure.Data
                  .HasForeignKey(x => x.AlerteId)
                  .OnDelete(DeleteBehavior.Cascade);
 
-                e.HasOne(x => x.Utilisateur)
-                 .WithMany()
-                 .HasForeignKey(x => x.UtilisateurId)
-                 .IsRequired(false)
-                 .OnDelete(DeleteBehavior.Restrict);
-
                 e.HasIndex(x => x.AlerteId);
                 e.HasIndex(x => x.Statut);
             });
-
             // ====================== DESTINATAIRE NOTIFICATION ======================
             modelBuilder.Entity<DestinataireNotification>(e =>
             {

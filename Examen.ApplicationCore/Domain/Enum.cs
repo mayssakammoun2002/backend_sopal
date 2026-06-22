@@ -3,6 +3,13 @@
     /// <summary>
     /// Statut du cycle de vie d'une alerte
     /// </summary>
+    public enum NiveauAlerte
+    {
+        Avertissement = 0,  // 2 non-conformes consécutifs
+        Critique = 1,       // taux >= 10 %
+        Urgence = 2         // taux >= 20 %
+    }
+
     public enum StatutAlerte
     {
         Nouvelle = 0,
@@ -10,16 +17,7 @@
         Resolue = 2,
         Ignoree = 3
     }
-
-    /// <summary>
-    /// Niveau de sévérité / criticité d'une alerte
-    /// </summary>
-    public enum NiveauAlerte
-    {
-        Avertissement = 0,   // Niveau bas
-        Critique = 1,        // Niveau moyen
-        Urgence = 2          // Niveau haut
-    }
+ 
 
 
     public enum TypeActionAlerte
@@ -31,7 +29,13 @@
         AjoutCommentaire = 4,
         Reouverture = 5
     }
-
+    public enum StatutNotification
+    {
+        EnAttente = 0,
+        Envoye = 1,
+        Echec = 2,
+        Lu = 3
+    }
     /// <summary>
     /// (Optionnel) Priorité globale
     /// </summary>
@@ -42,4 +46,5 @@
         Haute = 2,
         Critique = 3
     }
+
 }

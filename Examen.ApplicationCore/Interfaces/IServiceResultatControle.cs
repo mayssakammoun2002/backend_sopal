@@ -12,5 +12,6 @@ namespace Examen.ApplicationCore.Interfaces
         void Delete(string id);
         IEnumerable<ResultatControleResponseDTO> GetAll();
         void Commit();
+        ResultatControleStatsDTO GetStats(string? codeMachine, string? statut, DateTime? dateDebut, DateTime? dateFin, int? utilisateurId);
     }
 }

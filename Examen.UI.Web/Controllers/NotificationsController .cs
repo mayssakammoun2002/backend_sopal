@@ -3,9 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.Interfaces;
 using Examen.Infrastructure.Data;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Examen.Web.Controllers
 {
@@ -15,13 +12,16 @@ namespace Examen.Web.Controllers
     {
         private readonly ExamenDbContext _db;
         private readonly INotificationService _notifService;
+        private readonly ILogger<NotificationsController> _logger;
 
         public NotificationsController(
             ExamenDbContext db,
-            INotificationService notifService)
+            INotificationService notifService,
+            ILogger<NotificationsController> logger)
         {
             _db = db;
             _notifService = notifService;
+            _logger = logger;
         }
 
         // GET api/notifications/historique
@@ -35,7 +35,7 @@ namespace Examen.Web.Controllers
             try
             {
                 var query = _db.HistoriqueNotifications
-                    .Include(h => h.Alerte)
+                    .AsNoTracking()
                     .AsQueryable();
 
                 if (canal.HasValue)
@@ -46,26 +46,36 @@ namespace Examen.Web.Controllers
 
                 var total = await query.CountAsync();
 
-                var items = await query
-                    .OrderByDescending(h => h.DateEnvoi ?? h.Alerte.DateAlerte)
+                var ids = await query
+                    .OrderByDescending(h => h.DateEnvoi)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(h => new
-                    {
-                        h.Id,
-                        h.AlerteId,
-                        Canal = h.Canal.ToString(),
-                        h.Destinataire,
-                        h.Sujet,
-                        Statut = h.Statut.ToString(),
-                        h.DateEnvoi,
-                        h.DateLecture,
-                        h.ErreurMessage,
-                        h.NbTentatives,
-                        NiveauAlerte = h.Alerte.Niveau.ToString(),
-                        h.Alerte.CodeMachine
-                    })
+                    .Select(h => h.Id)
                     .ToListAsync();
+
+                var items = await (
+                    from h in _db.HistoriqueNotifications
+                    where ids.Contains(h.Id)
+                    join a in _db.Alertes on h.AlerteId equals a.Id into alerteJoin
+                    from alerte in alerteJoin.DefaultIfEmpty()
+                    orderby h.DateEnvoi descending
+                    select new
+                    {
+                        id = h.Id,
+                        alerteId = h.AlerteId,
+                        canal = h.Canal.ToString(),
+                        destinataire = h.Destinataire ?? "",
+                        sujet = h.Sujet ?? "",
+                        corps = h.Corps ?? "",
+                        statut = h.Statut.ToString(),
+                        dateEnvoi = h.DateEnvoi,
+                        dateLecture = h.DateLecture,
+                        erreurMessage = h.ErreurMessage ?? "",
+                        nbTentatives = h.NbTentatives,
+                        niveauAlerte = alerte != null ? alerte.Niveau.ToString() : "—",
+                        codeMachine = alerte != null ? alerte.CodeMachine : "—"
+                    }
+                ).ToListAsync();
 
                 return Ok(new { total, page, pageSize, items });
             }
@@ -80,39 +90,42 @@ namespace Examen.Web.Controllers
             }
         }
 
-        // GET api/notifications/non-lues/5
+        // GET api/notifications/non-lues/{userId}
         [HttpGet("non-lues/{userId}")]
-        public async Task<IActionResult> GetNonLues(   // ← async Task
+        public async Task<IActionResult> GetNonLues(
             int userId,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
             try
             {
-                var query = _db.HistoriqueNotifications          // ← _db, pas _unitOfWork
+                var query = _db.HistoriqueNotifications
                     .Include(n => n.Alerte)
                     .Where(n => n.UtilisateurId == userId
                              && n.Statut != StatutNotification.Lu);
 
                 var total = await query.CountAsync();
 
-                var items = await query
+                var rawItems = await query
                     .OrderByDescending(n => n.DateEnvoi)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(n => new
-                    {
-                        id = n.Id,
-                        alerteId = n.AlerteId,
-                        codeMachine = n.Alerte.CodeMachine,
-                        corps = n.Corps,
-                        sujet = n.Sujet,
-                        statut = n.Statut.ToString(),
-                        canal = n.Canal.ToString(),
-                        niveau = n.Alerte.Niveau.ToString(),
-                        dateAlerte = n.DateEnvoi ?? n.Alerte.DateAlerte,
-                    })
-                    .ToListAsync();                               // ← async
+                    .ToListAsync();
+
+                var items = rawItems.Select(n => new
+                {
+                    id = n.Id,
+                    alerteId = n.AlerteId,
+                    codeMachine = n.Alerte != null ? n.Alerte.CodeMachine : "—",
+                    corps = n.Corps ?? "",
+                    sujet = n.Sujet ?? "",
+                    statut = n.Statut.ToString(),
+                    canal = n.Canal.ToString(),
+                    niveau = n.Alerte != null ? n.Alerte.Niveau.ToString() : "—",
+                    dateAlerte = n.DateEnvoi ?? (n.Alerte != null
+                                    ? n.Alerte.DateAlerte
+                                    : DateTime.UtcNow)
+                }).ToList();
 
                 return Ok(new { items, total, page, pageSize });
             }
@@ -127,7 +140,7 @@ namespace Examen.Web.Controllers
             }
         }
 
-        // PUT api/notifications/5/lire
+        // PUT api/notifications/{id}/lire
         [HttpPut("{id}/lire")]
         public async Task<IActionResult> MarquerLu(int id)
         {
@@ -147,17 +160,16 @@ namespace Examen.Web.Controllers
             }
         }
 
-        // PUT api/notifications/lire-tout/5
+        // PUT api/notifications/lire-tout/{userId}
         [HttpPut("lire-tout/{userId}")]
         public async Task<IActionResult> MarquerToutLu(int userId)
         {
             try
             {
                 var notifs = await _db.HistoriqueNotifications
-                    .Where(h =>
-                        h.UtilisateurId == userId &&
-                        h.Canal == CanalNotification.InApp &&
-                        h.Statut != StatutNotification.Lu)
+                    .Where(h => h.UtilisateurId == userId
+                             && h.Canal == CanalNotification.InApp
+                             && h.Statut != StatutNotification.Lu)
                     .ToListAsync();
 
                 foreach (var n in notifs)
@@ -171,6 +183,68 @@ namespace Examen.Web.Controllers
             }
             catch (Exception ex)
             {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
+        }
+        // POST api/notifications/test-email
+        // POST api/notifications/test-email
+        [HttpPost("test-email")]
+        public async Task<IActionResult> TestEmail()
+        {
+            try
+            {
+                // Prendre la dernière alerte réelle en base
+                var alerte = await _db.Alertes
+                    .OrderByDescending(a => a.DateAlerte)
+                    .FirstOrDefaultAsync();
+
+                if (alerte == null)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Aucune alerte en base. Crée d'abord une alerte via POST /api/alertes."
+                    });
+
+                await _notifService.EnvoyerAlerteAsync(alerte);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Email de test envoyé pour alerte #{alerte.Id} ({alerte.CodeMachine})"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    erreur = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
+        }
+        // POST api/notifications/envoyer-alerte/{alerteId}
+        [HttpPost("envoyer-alerte/{alerteId}")]
+        public async Task<IActionResult> EnvoyerAlerte(int alerteId)
+        {
+            try
+            {
+                var alerte = await _db.Alertes.FindAsync(alerteId);
+                if (alerte == null)
+                    return NotFound(new { message = $"Alerte #{alerteId} introuvable." });
+
+                await _notifService.EnvoyerAlerteAsync(alerte);
+
+                return Ok(new { success = true, message = $"Email envoyé pour alerte #{alerteId}." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur envoi alerte #{AlerteId}", alerteId);
                 return StatusCode(500, new
                 {
                     success = false,

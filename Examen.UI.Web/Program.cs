@@ -9,6 +9,8 @@ using System.Text;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Examen.Infrastructure;
+using Examen.Infrastructure.Services;
+using Examen.ApplicationCore.Domain;
 using Examen.Web.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,15 +38,14 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ReportService>();
 
 // ── Notifications ─────────────────────────────────────────────────────────
-builder.Services.AddScoped<INotificationService, ServiceNotification>();
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings")
+);
+builder.Services.AddScoped<INotificationService, EmailNotificationService>();
 
 // ── Alertes ───────────────────────────────────────────────────────────────
-// ✅ Une seule ligne (suppression du doublon AddScoped<AlerteService>)
 builder.Services.AddScoped<IServiceAlerte, AlerteService>();
-
-// ✅ Background service qui vérifie les seuils toutes les 5 minutes
 builder.Services.AddHostedService<AlerteBackgroundService>();
-
 
 // ── SignalR ───────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
@@ -61,7 +62,6 @@ builder.Services.AddAuthentication(options =>
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
 
-    // ✅ SignalR envoie le token via query string
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -86,7 +86,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-                                       Encoding.UTF8.GetBytes(key)),
+                                       Encoding.UTF8.GetBytes(key!)),
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = "id"
     };
@@ -100,7 +100,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();   // requis pour SignalR WebSocket
+              .AllowCredentials();
     });
 });
 
@@ -128,7 +128,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── Route SignalR Hub ─────────────────────────────────────────────────────
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
