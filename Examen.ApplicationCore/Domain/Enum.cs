@@ -5,9 +5,9 @@
     /// </summary>
     public enum NiveauAlerte
     {
-        Avertissement = 0,  // 2 non-conformes consécutifs
-        Critique = 1,       // taux >= 10 %
-        Urgence = 2         // taux >= 20 %
+        Avertissement = 0,  
+        Critique = 1,      
+        Urgence = 2        
     }
 
     public enum StatutAlerte

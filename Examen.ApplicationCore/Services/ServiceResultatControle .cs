@@ -18,11 +18,17 @@ namespace Examen.ApplicationCore.Services
         }
 
         // ====================== GET ALL ======================
-        public IEnumerable<ResultatControleResponseDTO> GetAll()
+        public IEnumerable<ResultatControleResponseDTO> GetAll(int? utilisateurIdConnecte, bool estAdmin)
         {
             try
             {
-                var resultats = _unitOfWork.Repository<ResultatControle>().GetAll().ToList();
+                var query = _unitOfWork.Repository<ResultatControle>().GetAll().AsQueryable();
+
+                // Un opérateur ne voit que ses propres contrôles, l'admin voit tout
+                if (!estAdmin && utilisateurIdConnecte.HasValue)
+                    query = query.Where(r => r.UtilisateurId == utilisateurIdConnecte.Value);
+
+                var resultats = query.ToList();
 
                 var machines = _unitOfWork.Repository<Machine>().GetAll()
                     .ToDictionary(m => m.CodeMachine.Trim().ToUpper(), m => m.NomMachine ?? "N/A");
@@ -46,6 +52,7 @@ namespace Examen.ApplicationCore.Services
                     Controleur = utilisateurs.TryGetValue(r.UtilisateurId, out var nomControleur)
                                 ? nomControleur : "Inconnu",
                     NumOF = r.NumOF ?? "",
+                    NumLotMatiere = r.NumLotMatiere,
                     Quantite = r.Quantite,
                     Cadence = r.Cadence,
                     NbEchantillons = r.NbEchantillons,
@@ -102,8 +109,10 @@ namespace Examen.ApplicationCore.Services
                 CodeMachine = machine.CodeMachine,
                 CodeArticle = dto.CodeArticle.ToUpper().Trim(),
                 NumOF = dto.NumOF.Trim(),
+                NumLotMatiere = string.IsNullOrWhiteSpace(dto.NumLotMatiere) ? null : dto.NumLotMatiere.Trim(),
                 Quantite = dto.Quantite,
                 Cadence = dto.Cadence,
+
                 UtilisateurId = dto.UtilisateurId.Value,
                 NbEchantillons = dto.NbEchantillons > 0 ? dto.NbEchantillons : 3,
                 NbDefautsTest1 = dto.NbDefautsTest1,
@@ -159,6 +168,7 @@ namespace Examen.ApplicationCore.Services
             existing.CodeMachine = machine.CodeMachine;
             existing.CodeArticle = dto.CodeArticle.ToUpper().Trim();
             existing.NumOF = dto.NumOF.Trim();
+            existing.NumLotMatiere = string.IsNullOrWhiteSpace(dto.NumLotMatiere) ? null : dto.NumLotMatiere.Trim();
             existing.Quantite = dto.Quantite;
             existing.Cadence = dto.Cadence;
             existing.UtilisateurId = dto.UtilisateurId.Value;
@@ -201,7 +211,8 @@ namespace Examen.ApplicationCore.Services
             string? statut,
             DateTime? dateDebut,
             DateTime? dateFin,
-            int? utilisateurId)
+            int? utilisateurIdConnecte,
+            bool estAdmin)
         {
             try
             {
@@ -219,15 +230,15 @@ namespace Examen.ApplicationCore.Services
                 if (dateFin.HasValue)
                     query = query.Where(r => r.DateControle <= dateFin.Value);
 
-                if (utilisateurId.HasValue && utilisateurId.Value > 0)
-                    query = query.Where(r => r.UtilisateurId == utilisateurId.Value);
+                // Un opérateur ne voit que ses propres contrôles, l'admin voit tout
+                if (!estAdmin && utilisateurIdConnecte.HasValue)
+                    query = query.Where(r => r.UtilisateurId == utilisateurIdConnecte.Value);
 
                 var resultats = query.ToList();
 
                 var machines = _unitOfWork.Repository<Machine>().GetAll()
                     .ToDictionary(m => m.CodeMachine.Trim().ToUpper(), m => m.NomMachine ?? "N/A");
 
-                // Table TypeDefaut (Id -> Libelle), utilisée pour mapper TypeDefaut1Id/TypeDefaut2Id
                 Dictionary<int, string> typesDefauts;
                 try
                 {
@@ -243,8 +254,13 @@ namespace Examen.ApplicationCore.Services
                 int conformes = resultats.Count(r => r.StatutLot == "Conforme");
                 int nonConformes = total - conformes;
                 int totalDefauts = resultats.Sum(r => r.NbDefautsTest1 + r.NbDefautsTest2);
+                long quantiteTotaleRealisee = resultats.Sum(r => (long)r.Quantite);
 
-                // === Par machine ===
+                // Taux de "soudure" = non conformité / quantité totale réalisée (en %)
+                double tauxSoudure = quantiteTotaleRealisee == 0
+                    ? 0
+                    : Math.Round(nonConformes * 100.0 / quantiteTotaleRealisee, 2);
+
                 var parMachine = resultats
                     .GroupBy(r => r.CodeMachine ?? "INCONNU")
                     .Select(g => new StatParMachineDTO
@@ -259,9 +275,6 @@ namespace Examen.ApplicationCore.Services
                     .OrderByDescending(x => x.TotalControles)
                     .ToList();
 
-                // === Par type de défaut ===
-                // Priorité : TypeDefaut1Id/TypeDefaut2Id (table TypeDefaut) si renseignés,
-                // sinon fallback sur le texte libre Defaut1/Defaut2.
                 var defautCounts = new Dictionary<string, int>();
                 foreach (var r in resultats)
                 {
@@ -289,7 +302,6 @@ namespace Examen.ApplicationCore.Services
                     .OrderByDescending(x => x.Occurrences)
                     .ToList();
 
-                // === Évolution par jour ===
                 var evolution = resultats
                     .GroupBy(r => r.DateControle.Date)
                     .Select(g => new StatParJourDTO
@@ -308,6 +320,8 @@ namespace Examen.ApplicationCore.Services
                     TotalNonConformes = nonConformes,
                     TauxConformite = total == 0 ? 0 : Math.Round(conformes * 100.0 / total, 1),
                     TotalDefauts = totalDefauts,
+                    QuantiteTotaleRealisee = quantiteTotaleRealisee,
+                    TauxSoudure = tauxSoudure,
                     ParMachine = parMachine,
                     ParTypeDefaut = parTypeDefaut,
                     Evolution = evolution

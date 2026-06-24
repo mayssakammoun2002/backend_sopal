@@ -13,7 +13,6 @@ namespace Examen.ApplicationCore.Interfaces
         void DeleteById(string codeArticle);
         void Commit();
 
-        // Méthodes spécifiques (optionnelles si pas encore implémentées)
         IEnumerable<Produit> GetWithEchantillonnageMinimum(int minTaille);
         IEnumerable<TypeDefaut> GetAllTypeDefauts();
     }

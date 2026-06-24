@@ -3,7 +3,11 @@ using Examen.ApplicationCore.DTOs;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.Interfaces;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using ClosedXML.Excel;
 
 namespace Examen.Web.Controllers
 {
@@ -59,8 +63,6 @@ namespace Examen.Web.Controllers
                     TailleEchantillonnage = dto.TailleEchantillonnage
                 };
 
-                // ❌ Supprimé : TypeDefaut n'a plus de relation avec Produit
-
                 _serviceProduit.Add(produit);
                 _serviceProduit.Commit();
 
@@ -103,6 +105,82 @@ namespace Examen.Web.Controllers
             }
         }
 
+        [HttpPost("import-excel")]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Aucun fichier fourni" });
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".xlsx" && ext != ".xls")
+                return BadRequest(new { message = "Le fichier doit être un Excel (.xlsx, .xls)" });
+
+            var errors = new List<string>();
+            var produitsAjoutes = 0;
+            var produitsIgnores = 0;
+
+            try
+            {
+                using var stream = new MemoryStream();
+                await file.CopyToAsync(stream);
+
+                using var workbook = new XLWorkbook(stream);
+                var worksheet = workbook.Worksheet(1);
+                var rows = worksheet.RowsUsed().Skip(1); // skip header
+
+                foreach (var row in rows)
+                {
+                    var codeArticle = row.Cell(1).GetString().Trim();
+                    var nomProduit = row.Cell(2).GetString().Trim();
+                    var designation = row.Cell(3).GetString().Trim();
+                    var tailleStr = row.Cell(4).GetString().Trim();
+
+                    if (string.IsNullOrWhiteSpace(codeArticle) || string.IsNullOrWhiteSpace(nomProduit))
+                    {
+                        errors.Add($"Ligne {row.RowNumber()} : code article ou nom produit manquant");
+                        produitsIgnores++;
+                        continue;
+                    }
+
+                    codeArticle = codeArticle.ToUpperInvariant();
+
+                    if (_serviceProduit.GetById(codeArticle) != null)
+                    {
+                        errors.Add($"Ligne {row.RowNumber()} : le produit '{codeArticle}' existe déjà");
+                        produitsIgnores++;
+                        continue;
+                    }
+
+                    int.TryParse(tailleStr, out var taille);
+
+                    var produit = new Produit
+                    {
+                        CodeArticle = codeArticle,
+                        NomProduit = nomProduit,
+                        Designation = designation,
+                        TailleEchantillonnage = taille
+                    };
+
+                    _serviceProduit.Add(produit);
+                    produitsAjoutes++;
+                }
+
+                _serviceProduit.Commit();
+
+                return Ok(new
+                {
+                    message = $"{produitsAjoutes} produit(s) importé(s), {produitsIgnores} ignoré(s)",
+                    ajoutes = produitsAjoutes,
+                    ignores = produitsIgnores,
+                    erreurs = errors
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Erreur lors de l'import", detail = ex.Message, inner = ex.InnerException?.Message });
+            }
+        }
+
         [HttpPut("{code}")]
         public IActionResult UpdateProduit(string code, [FromBody] ProduitDTO dto)
         {
@@ -118,8 +196,6 @@ namespace Examen.Web.Controllers
                 produit.NomProduit = (dto.NomProduit ?? produit.NomProduit)?.Trim() ?? produit.NomProduit;
                 produit.Designation = (dto.Designation ?? produit.Designation)?.Trim() ?? produit.Designation;
                 produit.TailleEchantillonnage = dto.TailleEchantillonnage;
-
-                // ❌ Supprimé : TypeDefaut n'a plus de relation avec Produit
 
                 _serviceProduit.Update(produit);
                 _serviceProduit.Commit();

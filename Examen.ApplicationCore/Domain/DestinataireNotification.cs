@@ -9,7 +9,6 @@ namespace Examen.ApplicationCore.Domain
         /// <summary>Cible un utilisateur spécifique (optionnel).</summary>
         public int? UtilisateurId { get; set; }
 
-        /// <summary>Cible un rôle entier, ex : "Responsable", "Admin" (optionnel).</summary>
         public string? Role { get; set; }
 
         public CanalNotification Canal { get; set; }
@@ -18,10 +17,8 @@ namespace Examen.ApplicationCore.Domain
 
         public bool EstActif { get; set; } = true;
 
-        /// <summary>Adresse email ou numéro de téléphone selon le canal.</summary>
         public string Destinataire { get; set; } = string.Empty;
 
-        // ── Navigation ────────────────────────────────────────────────────
         public Utilisateur? Utilisateur { get; set; }
     }
 }

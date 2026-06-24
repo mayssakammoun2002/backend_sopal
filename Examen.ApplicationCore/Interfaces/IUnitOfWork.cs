@@ -9,10 +9,7 @@ namespace Examen.ApplicationCore.Interfaces
         void Commit();
         IGenericRepository<TEntity> Repository<TEntity>() where TEntity : class;
         void Save();
-        Task<int> SaveAsync();   // ou int Save() si tu préfères synchrone
-
-        // Optionnel selon tes besoins :
-        // void Commit();
-        // Task CommitAsync();
+        Task<int> SaveAsync();  
+   
     }
 }

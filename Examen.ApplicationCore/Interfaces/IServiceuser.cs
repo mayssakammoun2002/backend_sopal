@@ -12,7 +12,6 @@ namespace Examen.ApplicationCore.Interfaces
         void DeleteById(int id);
         void Commit();
 
-        // ------------------ Auth ------------------
         Utilisateur? GetByEmail(string email);
         bool VerifyPassword(Utilisateur user, string password);
         string HashPassword(string password);

@@ -4,7 +4,10 @@ using Examen.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.DTO;
 using System;
 using System.IO;
-
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ClosedXML.Excel;
 namespace Examen.Web.Controllers
 {
     [Route("api/[controller]")]
@@ -118,7 +121,76 @@ namespace Examen.Web.Controllers
 
             return Ok(existing);
         }
+        // POST: api/TypeDefaut/import-excel
+        [HttpPost("import-excel")]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Aucun fichier fourni" });
 
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".xlsx" && ext != ".xls")
+                return BadRequest(new { message = "Le fichier doit être un Excel (.xlsx, .xls)" });
+
+            var errors = new List<string>();
+            var ajoutes = 0;
+            var ignores = 0;
+
+            try
+            {
+                using var stream = new MemoryStream();
+                await file.CopyToAsync(stream);
+
+                using var workbook = new XLWorkbook(stream);
+                var worksheet = workbook.Worksheet(1);
+                var rows = worksheet.RowsUsed().Skip(1); // skip header
+
+                foreach (var row in rows)
+                {
+                    var nomDefaut = row.Cell(1).GetString().Trim();
+                    var description = row.Cell(2).GetString().Trim();
+                    var causeProbable = row.Cell(3).GetString().Trim();
+                    var solution = row.Cell(4).GetString().Trim();
+                    var frequenceStr = row.Cell(5).GetString().Trim();
+
+                    if (string.IsNullOrWhiteSpace(nomDefaut))
+                    {
+                        errors.Add($"Ligne {row.RowNumber()} : nom du défaut manquant");
+                        ignores++;
+                        continue;
+                    }
+
+                    int.TryParse(frequenceStr, out var frequence);
+
+                    var type = new TypeDefaut
+                    {
+                        NomDefaut = nomDefaut,
+                        Description = description,
+                        CauseProbable = causeProbable,
+                        Solution = solution,
+                        Frequence = frequence,
+                        ImagePath = string.Empty
+                    };
+
+                    _serviceTypeDefaut.Add(type);
+                    ajoutes++;
+                }
+
+                _serviceTypeDefaut.Commit();
+
+                return Ok(new
+                {
+                    message = $"{ajoutes} défaut(s) importé(s), {ignores} ignoré(s)",
+                    ajoutes,
+                    ignores,
+                    erreurs = errors
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Erreur lors de l'import", detail = ex.Message, inner = ex.InnerException?.Message });
+            }
+        }
         // DELETE: api/TypeDefaut/5
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)

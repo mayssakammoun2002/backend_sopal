@@ -13,9 +13,8 @@ public class Lot
     public string MachineId { get; set; } = string.Empty;
     public Machine Machine { get; set; } = null!;
 
-    // ✅ Fixed: string instead of int
     [ForeignKey(nameof(Produit))]
-    public string ProduitId { get; set; } = string.Empty;   // ← changed to string
+    public string ProduitId { get; set; } = string.Empty;   
 
     public Produit Produit { get; set; } = null!;
 

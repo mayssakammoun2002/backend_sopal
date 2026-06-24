@@ -16,7 +16,6 @@ namespace Examen.ApplicationCore.Services
     /// </summary>
     public class AlerteService : IServiceAlerte
     {
-        // Seuil par défaut (%) si aucun Seuil configuré en base
         private const decimal SEUIL_PAR_DEFAUT = 30m;
 
         private readonly IUnitOfWork _unitOfWork;
@@ -33,10 +32,7 @@ namespace Examen.ApplicationCore.Services
             _logger = logger;
         }
 
-        // ══════════════════════════════════════════════════════════════
-        // CRUD
-        // ══════════════════════════════════════════════════════════════
-
+  
         public void Add(Alerte alerte) => _unitOfWork.Repository<Alerte>().Add(alerte);
         public void Update(Alerte alerte) => _unitOfWork.Repository<Alerte>().Update(alerte);
         public void Delete(Alerte alerte) => _unitOfWork.Repository<Alerte>().Delete(alerte);
@@ -53,19 +49,12 @@ namespace Examen.ApplicationCore.Services
         public Alerte? GetById(int id)
             => _unitOfWork.Repository<Alerte>().GetAll().FirstOrDefault(a => a.Id == id);
 
-        // ══════════════════════════════════════════════════════════════
-        // ALERTES ACTIVES
-        // ══════════════════════════════════════════════════════════════
-
+   
         public IEnumerable<Alerte> GetActives()
             => _unitOfWork.Repository<Alerte>().GetAll()
                 .Where(a => a.Statut == StatutAlerte.Nouvelle || a.Statut == StatutAlerte.EnCours)
                 .OrderByDescending(a => a.Niveau)
                 .ThenByDescending(a => a.DateAlerte);
-
-        // ══════════════════════════════════════════════════════════════
-        // CYCLE DE VIE
-        // ══════════════════════════════════════════════════════════════
 
         public void PrendreEnChargeAlerte(int alerteId, int userId)
         {
@@ -104,10 +93,7 @@ namespace Examen.ApplicationCore.Services
                 alerteId, userId, raison);
         }
 
-        // ══════════════════════════════════════════════════════════════
-        // COMMENTAIRES
-        // ══════════════════════════════════════════════════════════════
-
+      
         public void AjouterCommentaire(int alerteId, int auteurId, string nomAuteur, string contenu)
         {
             var alerte = GetById(alerteId)
@@ -134,10 +120,7 @@ namespace Examen.ApplicationCore.Services
                 .Where(c => c.AlerteId == alerteId)
                 .OrderByDescending(c => c.DateCreation);
 
-        // ══════════════════════════════════════════════════════════════
-        // ① RÈGLE : 2 NON-CONFORMES CONSÉCUTIFS (appelée après chaque saisie)
-        // ══════════════════════════════════════════════════════════════
-
+  
         /// <summary>
         /// À appeler depuis <c>ResultatsControleController</c> après chaque enregistrement
         /// d'un résultat Non Conforme.
@@ -146,7 +129,6 @@ namespace Examen.ApplicationCore.Services
         public async Task VerifierNonConformesConsecutifsAsync(
             string codeMachine, string codeArticle, string numOF)
         {
-            // Les 2 derniers contrôles pour cette machine + article
             var derniers = _unitOfWork.Repository<ResultatControle>()
                 .GetAll()
                 .Where(r => r.CodeMachine == codeMachine && r.CodeArticle == codeArticle)
@@ -155,13 +137,12 @@ namespace Examen.ApplicationCore.Services
                 .ToList();
 
             if (derniers.Count < 2)
-                return; // Pas assez d'historique
+                return; 
 
             bool tousNonConformes = derniers.All(r => r.StatutLot == "Non Conforme");
             if (!tousNonConformes)
                 return;
 
-            // Éviter doublon : une alerte active sur même machine/article ?
             bool dejaActive = _unitOfWork.Repository<Alerte>().GetAll()
                 .Any(a => a.CodeMachine == codeMachine
                        && a.CodeArticle == codeArticle
@@ -182,7 +163,7 @@ namespace Examen.ApplicationCore.Services
                 CodeArticle = codeArticle,
                 NumOF = numOF,
                 NbNonConformesConsecutifs = 2,
-                TauxDetecte = 100,           // 2/2 = 100 % sur les 2 derniers
+                TauxDetecte = 100,         
                 QuantiteDefauts = 2,
                 QuantiteTotale = 2,
                 Niveau = NiveauAlerte.Avertissement,
@@ -202,10 +183,6 @@ namespace Examen.ApplicationCore.Services
             await EnvoyerNotificationSiPossibleAsync(alerte);
         }
 
-        // ══════════════════════════════════════════════════════════════
-        // ② RÈGLE : SEUIL DE TAUX (job planifié ou appel API)
-        // ══════════════════════════════════════════════════════════════
-
         /// <summary>
         /// Vérifie tous les seuils actifs configurés en base.
         /// Peut être appelée par un Hosted Service (ex: toutes les 5 min).
@@ -221,7 +198,6 @@ namespace Examen.ApplicationCore.Services
 
                 _logger.LogInformation("🔍 Vérification de {Count} seuils actifs", seuils.Count);
 
-                // Si aucun seuil configuré → appliquer le seuil par défaut 30 %
                 if (!seuils.Any())
                 {
                     await VerifierSeuilParDefautAsync();
@@ -237,7 +213,6 @@ namespace Examen.ApplicationCore.Services
             }
         }
 
-        // ── Seuil configuré ──────────────────────────────────────────
 
         private async Task VerifierUnSeuilAsync(Seuil seuil)
         {
@@ -283,7 +258,6 @@ namespace Examen.ApplicationCore.Services
             }
         }
 
-        // ── Seuil par défaut 30 % (aucun Seuil en base) ─────────────
 
         private async Task VerifierSeuilParDefautAsync()
         {
@@ -333,10 +307,6 @@ namespace Examen.ApplicationCore.Services
                     alerte.Id, SEUIL_PAR_DEFAUT, m.CodeMachine, m.CodeArticle, taux);
             }
         }
-
-        // ══════════════════════════════════════════════════════════════
-        // HELPERS PRIVÉS
-        // ══════════════════════════════════════════════════════════════
 
         private static decimal CalculerTaux(IList<ResultatControle> data)
         {

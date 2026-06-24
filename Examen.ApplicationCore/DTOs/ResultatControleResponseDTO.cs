@@ -17,6 +17,8 @@ namespace Examen.ApplicationCore.DTOs
 
         // Informations de production
         public string NumOF { get; set; } = string.Empty;
+        public string? NumLotMatiere { get; set; }
+
         public int Quantite { get; set; }
         public int Cadence { get; set; }
 

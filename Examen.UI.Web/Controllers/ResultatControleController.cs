@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Examen.ApplicationCore.DTOs;
 using Examen.ApplicationCore.Interfaces;
 using System;
+using System.Security.Claims;
 
 namespace Examen.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ResultatControleController : ControllerBase
     {
         private readonly IServiceResultatControle _service;
@@ -16,12 +19,25 @@ namespace Examen.Web.Controllers
             _service = service;
         }
 
+        // Récupère l'Id de l'utilisateur connecté à partir du JWT
+        private int? GetUtilisateurIdConnecte()
+        {
+            var claim = User.FindFirst("id")?.Value;
+            return int.TryParse(claim, out var id) ? id : null;
+        }
+
+        // Détermine si l'utilisateur connecté est Admin
+        private bool EstAdmin()
+        {
+            return User.IsInRole("Admin");
+        }
+
         [HttpGet]
         public IActionResult GetAll()
         {
             try
             {
-                var resultats = _service.GetAll();
+                var resultats = _service.GetAll(GetUtilisateurIdConnecte(), EstAdmin());
                 return Ok(resultats);
             }
             catch (Exception ex)
@@ -63,7 +79,6 @@ namespace Examen.Web.Controllers
 
                 if (!ModelState.IsValid)
                 {
-                    // Ceci te montre exactement quels champs posent problème
                     var errors = ModelState
                         .Where(x => x.Value.Errors.Count > 0)
                         .ToDictionary(
@@ -136,12 +151,14 @@ namespace Examen.Web.Controllers
             [FromQuery] string? codeMachine,
             [FromQuery] string? statut,
             [FromQuery] DateTime? dateDebut,
-            [FromQuery] DateTime? dateFin,
-            [FromQuery] int? utilisateurId)
+            [FromQuery] DateTime? dateFin)
         {
             try
             {
-                var stats = _service.GetStats(codeMachine, statut, dateDebut, dateFin, utilisateurId);
+                var stats = _service.GetStats(
+                    codeMachine, statut, dateDebut, dateFin,
+                    GetUtilisateurIdConnecte(), EstAdmin());
+
                 return Ok(stats);
             }
             catch (Exception ex)
@@ -154,6 +171,7 @@ namespace Examen.Web.Controllers
                 });
             }
         }
+
         [HttpDelete("{id}")]
         public IActionResult Delete(string id)
         {

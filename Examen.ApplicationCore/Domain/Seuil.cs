@@ -13,7 +13,6 @@
         public DateTime? DateModification { get; set; }
         public int? CreePar { get; set; }
 
-        // Relations (pour EF Core)
         public int? TypeDefaut1Id { get; set; }
 
         public Machine? Machine { get; set; }

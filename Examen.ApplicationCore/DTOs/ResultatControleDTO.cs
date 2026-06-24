@@ -25,7 +25,6 @@ public class ResultatControleDTO
     [Required(ErrorMessage = "Cadence est obligatoire")]
     [Range(1, 10000, ErrorMessage = "Cadence doit être entre 1 et 10000")]
     public int Cadence { get; set; }
-
     public int NbEchantillons { get; set; } = 3;
     public int NbDefautsTest1 { get; set; } = 0;
     public int NbDefautsTest2 { get; set; } = 0;
@@ -33,4 +32,5 @@ public class ResultatControleDTO
     public string? Defaut1 { get; set; }
     public string? Defaut2 { get; set; }
     public DateTime? DateControle { get; set; }
+    public string? NumLotMatiere { get; internal set; }
 }

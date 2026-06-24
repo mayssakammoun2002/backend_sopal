@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
 
@@ -10,8 +11,17 @@ namespace Examen.ApplicationCore.Interfaces
         ResultatControle Modifier(string id, ResultatControleDTO dto);
         ResultatControle GetById(string id);
         void Delete(string id);
-        IEnumerable<ResultatControleResponseDTO> GetAll();
+
+        IEnumerable<ResultatControleResponseDTO> GetAll(int? utilisateurIdConnecte, bool estAdmin);
+
         void Commit();
-        ResultatControleStatsDTO GetStats(string? codeMachine, string? statut, DateTime? dateDebut, DateTime? dateFin, int? utilisateurId);
+
+        ResultatControleStatsDTO GetStats(
+            string? codeMachine,
+            string? statut,
+            DateTime? dateDebut,
+            DateTime? dateFin,
+            int? utilisateurIdConnecte,
+            bool estAdmin);
     }
 }

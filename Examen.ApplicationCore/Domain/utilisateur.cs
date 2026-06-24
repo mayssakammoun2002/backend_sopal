@@ -25,7 +25,6 @@ namespace Examen.ApplicationCore.Domain
 
         public bool Actif { get; set; } = true;
 
-        // Navigation
         public ICollection<ResultatControle> ResultatControles { get; set; }
             = new List<ResultatControle>();
         public ICollection<Lot> Lots { get; set; } = new List<Lot>();

@@ -10,6 +10,8 @@ namespace Examen.ApplicationCore.DTOs
         public int TotalNonConformes { get; set; }
         public double TauxConformite { get; set; } // en %
         public int TotalDefauts { get; set; }
+        public long QuantiteTotaleRealisee { get; set; }
+        public double TauxSoudure { get; set; }
         public List<StatParMachineDTO> ParMachine { get; set; } = new();
         public List<StatParDefautDTO> ParTypeDefaut { get; set; } = new();
         public List<StatParJourDTO> Evolution { get; set; } = new();

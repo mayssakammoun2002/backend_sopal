@@ -36,8 +36,8 @@ namespace Examen.ApplicationCore.Domain
         public string StatutLot { get; set; } = "Conforme";
 
         public string? SolutionGlobale { get; set; }
+        public string? NumLotMatiere { get; set; }
 
-        // === Défauts (maximum 2) ===
         public int? TypeDefaut1Id { get; set; }
         public int? TypeDefaut2Id { get; set; }
 
@@ -50,7 +50,6 @@ namespace Examen.ApplicationCore.Domain
         [StringLength(200)]
         public string? Defaut2 { get; set; }
 
-        // === Navigation Properties ===
         public Machine Machine { get; set; } = null!;
         [NotMapped]
         public Produit? Produit { get; set; }
