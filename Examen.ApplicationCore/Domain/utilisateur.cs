@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Examen.ApplicationCore.Domain;
 
 namespace Examen.ApplicationCore.Domain
 {
@@ -28,7 +27,8 @@ namespace Examen.ApplicationCore.Domain
         public ICollection<ResultatControle> ResultatControles { get; set; }
             = new List<ResultatControle>();
         public ICollection<Lot> Lots { get; set; } = new List<Lot>();
-
+        public int? ProfilId { get; set; }
+        public Profil? Profil { get; set; }
     }
 
 }

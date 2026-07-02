@@ -1,4 +1,5 @@
 ﻿using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Examen.Infrastructure.Data
@@ -8,7 +9,7 @@ namespace Examen.Infrastructure.Data
         public ExamenDbContext(DbContextOptions<ExamenDbContext> options)
             : base(options) { }
 
-        // DbSets
+        // DbSets existants
         public DbSet<Machine> Machines { get; set; }
         public DbSet<Produit> Produits { get; set; }
         public DbSet<ResultatControle> ResultatControles { get; set; }
@@ -20,6 +21,13 @@ namespace Examen.Infrastructure.Data
         public DbSet<DestinataireNotification> DestinatairesNotification { get; set; }
         public DbSet<CommentaireAlerte> CommentairesAlerte { get; set; }
         public DbSet<PredictionDefaut> PredictionsDefauts { get; set; }
+
+        // ====================== NOUVEAUX DbSets : GESTION DYNAMIQUE DES ACCES ======================
+        public DbSet<Menu> Menus { get; set; }
+        public DbSet<TypeFonction> TypeFonctions { get; set; }
+        public DbSet<Profil> Profils { get; set; }
+        public DbSet<ProfilMenu> ProfilMenus { get; set; }
+        public DbSet<ProfilFonctionDroit> ProfilFonctionDroits { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -196,6 +204,7 @@ namespace Examen.Infrastructure.Data
                 e.HasIndex(x => x.AlerteId);
                 e.HasIndex(x => x.Statut);
             });
+
             // ====================== DESTINATAIRE NOTIFICATION ======================
             modelBuilder.Entity<DestinataireNotification>(e =>
             {
@@ -212,6 +221,82 @@ namespace Examen.Infrastructure.Data
                  .IsRequired(false)
                  .OnDelete(DeleteBehavior.Restrict);
             });
+
+            // ====================== GESTION DYNAMIQUE DES ACCES ======================
+
+            // ---- MENU ----
+            modelBuilder.Entity<Menu>(e =>
+            {
+                e.HasKey(m => m.Id);
+                e.Property(m => m.Nom).IsRequired().HasMaxLength(100);
+                e.Property(m => m.Lien).HasMaxLength(200);
+
+                e.HasOne(m => m.Parent)
+                 .WithMany(m => m.Enfants)
+                 .HasForeignKey(m => m.ParentId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(m => m.TypeFonction)
+                 .WithMany(t => t.Menus)
+                 .HasForeignKey(m => m.TypeFonctionId)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---- TYPE FONCTION ----
+            modelBuilder.Entity<TypeFonction>(e =>
+            {
+                e.HasKey(t => t.Id);
+                e.Property(t => t.Nom).IsRequired().HasMaxLength(100);
+                e.Property(t => t.Description).HasMaxLength(300);
+            });
+
+            // ---- PROFIL ----
+            modelBuilder.Entity<Profil>(e =>
+            {
+                e.HasKey(p => p.Id);
+                e.Property(p => p.Nom).IsRequired().HasMaxLength(100);
+                e.Property(p => p.Description).HasMaxLength(300);
+            });
+
+            // ---- PROFIL MENU (clé composite) ----
+            modelBuilder.Entity<ProfilMenu>(e =>
+            {
+                e.HasKey(pm => new { pm.ProfilId, pm.MenuId });
+
+                e.HasOne(pm => pm.Profil)
+                 .WithMany(p => p.ProfilMenus)
+                 .HasForeignKey(pm => pm.ProfilId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(pm => pm.Menu)
+                 .WithMany(m => m.ProfilMenus)
+                 .HasForeignKey(pm => pm.MenuId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---- PROFIL FONCTION DROIT (clé composite) ----
+            modelBuilder.Entity<ProfilFonctionDroit>(e =>
+            {
+                e.HasKey(pfd => new { pfd.ProfilId, pfd.MenuId });
+
+                e.HasOne(pfd => pfd.Profil)
+                 .WithMany(p => p.ProfilFonctionDroits)
+                 .HasForeignKey(pfd => pfd.ProfilId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(pfd => pfd.Menu)
+                 .WithMany(m => m.ProfilFonctionDroits)
+                 .HasForeignKey(pfd => pfd.MenuId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---- UTILISATEUR -> PROFIL ----
+            modelBuilder.Entity<Utilisateur>()
+                .HasOne(u => u.Profil)
+                .WithMany(p => p.Utilisateurs)
+                .HasForeignKey(u => u.ProfilId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }

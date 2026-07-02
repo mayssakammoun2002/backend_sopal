@@ -22,6 +22,13 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    }); builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 builder.Services.AddDbContext<ExamenDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -40,6 +47,8 @@ builder.Services.AddHttpClient<IServicePredictionDefaut, ServicePredictionDefaut
 builder.Services.AddScoped<IServiceLot, ServiceLot>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<IServiceProfil, ServiceProfil>();   
+builder.Services.AddScoped<IServiceMenu, ServiceMenu>();
 
 // ── Notifications ─────────────────────────────────────────────────────────
 builder.Services.Configure<EmailSettings>(
