@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Examen.ApplicationCore.Entities;
-
 namespace Examen.ApplicationCore.Interfaces
 {
     public interface IServiceMenu
@@ -12,7 +11,8 @@ namespace Examen.ApplicationCore.Interfaces
         Menu? Update(int id, Menu updated);
         bool Delete(int id);
         void Commit();
-
+        List<MenuUtilisateurDto> GetMenuPourProfil(int profilId);
+        List<MenuUtilisateurDto> GetMenuPourAdmin(); // ✅ nouveau
         Task<List<Menu>> GetAllAsync();
         Task<Menu?> GetByIdAsync(int id);
         Task<Menu> CreateAsync(Menu menu);

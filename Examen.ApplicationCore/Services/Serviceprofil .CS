@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using AM.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
 using Examen.ApplicationCore.Entities;
@@ -20,7 +19,6 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         }
 
-     
         private IQueryable<Profil> QueryComplet()
         {
             return _unitOfWork.Repository<Profil>()

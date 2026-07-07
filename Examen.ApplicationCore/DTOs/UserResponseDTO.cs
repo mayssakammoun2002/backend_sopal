@@ -7,5 +7,7 @@
         public string LastName { get; set; }
         public string Email { get; set; }
         public int Role { get; set; }
+        public int? ProfilId { get; set; } // ✅ ajouté
+
     }
 }

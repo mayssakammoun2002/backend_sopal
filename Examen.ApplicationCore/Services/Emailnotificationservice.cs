@@ -2,6 +2,7 @@
 using Examen.ApplicationCore.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -30,11 +31,10 @@ namespace Examen.Infrastructure.Services
         {
             // Récupérer tous les admins avec un email valide
             var adminEmails = _unitOfWork.Repository<Utilisateur>()
-                .GetAll()
-                .Where(u => u.Role == Role.Admin
-                         && !string.IsNullOrEmpty(u.Email))
-                .Select(u => u.Email!)
-                .Distinct()
+                .Query()
+                .Include(u => u.Profil)
+                .Where(u => u.Profil != null && u.Profil.EstAdmin && !string.IsNullOrWhiteSpace(u.Email))
+                .Select(u => u.Email)
                 .ToList();
 
             if (!adminEmails.Any())
@@ -68,7 +68,6 @@ namespace Examen.Infrastructure.Services
                 await EnvoyerEtMettreAJourAsync(historique, email, sujet, corps);
             }
         }
-
         public async Task MarquerCommeLuAsync(int notificationId)
         {
             var notif = _unitOfWork.Repository<HistoriqueNotification>()

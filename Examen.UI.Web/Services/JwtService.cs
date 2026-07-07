@@ -17,17 +17,17 @@ namespace Examen.ApplicationCore.Services
 
         public string GenerateToken(Utilisateur user)
         {
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Email, user.Email), // ✅ FIX
+                new Claim(ClaimTypes.Email, user.Email),
                 new Claim("id", user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
+                new Claim("profilId", user.ProfilId?.ToString() ?? ""),
+                new Claim("estAdmin", user.Profil?.EstAdmin == true ? "true" : "false")
             };
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_config["Jwt:Key"])
             );
-
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(

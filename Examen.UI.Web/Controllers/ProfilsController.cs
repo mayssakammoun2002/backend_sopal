@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using Examen.ApplicationCore.Interfaces;
 using Examen.Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Examen.UI.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "RequireAdmin")] // ✅ tout le contrôleur réservé à l'admin
     public class ProfilsController : ControllerBase
     {
         private readonly IServiceProfil _serviceProfil;
@@ -17,7 +19,6 @@ namespace Examen.UI.Web.Controllers
             _serviceProfil = serviceProfil;
         }
 
-        // GET: api/profils
         [HttpGet]
         public IActionResult GetAll()
         {
@@ -31,7 +32,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // GET: api/profils/5
         [HttpGet("{id:int}")]
         public IActionResult GetById(int id)
         {
@@ -49,7 +49,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // POST: api/profils
         [HttpPost]
         public IActionResult Create([FromBody] CreateProfilRequest request)
         {
@@ -59,7 +58,6 @@ namespace Examen.UI.Web.Controllers
                     return BadRequest(ModelState);
 
                 var created = _serviceProfil.Create(request);
-
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (Exception ex)
@@ -68,7 +66,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // PUT: api/profils/5
         [HttpPut("{id:int}")]
         public IActionResult Update(int id, [FromBody] CreateProfilRequest request)
         {
@@ -89,7 +86,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // DELETE: api/profils/5
         [HttpDelete("{id:int}")]
         public IActionResult Delete(int id)
         {
@@ -107,7 +103,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // PUT: api/profils/5/menus
         [HttpPut("{id:int}/menus")]
         public IActionResult UpdateMenus(int id, [FromBody] List<ProfilMenuRequest> menus)
         {
@@ -128,7 +123,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // PUT: api/profils/5/droits
         [HttpPut("{id:int}/droits")]
         public IActionResult UpdateDroits(int id, [FromBody] List<ProfilFonctionDroitRequest> droits)
         {
@@ -149,4 +143,4 @@ namespace Examen.UI.Web.Controllers
             }
         }
     }
-}   
+}

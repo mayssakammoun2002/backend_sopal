@@ -19,7 +19,7 @@ public class UtilisateurController : ControllerBase
         _jwtService = jwtService;
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "RequireAdmin")]
     [HttpGet]
     public IActionResult GetAll() => Ok(_service.GetAll());
 
@@ -36,13 +36,7 @@ public class UtilisateurController : ControllerBase
     [HttpGet("me")]
     public IActionResult GetMe()
     {
-        // Debug
-        foreach (var claim in User.Claims)
-            Console.WriteLine($">>> CLAIM: {claim.Type} = {claim.Value}");
-
         var idClaim = User.FindFirst("id")?.Value;
-        Console.WriteLine($">>> idClaim = {idClaim}");
-
         if (idClaim == null)
             return Unauthorized(new { message = "Claim id introuvable" });
 
@@ -55,11 +49,11 @@ public class UtilisateurController : ControllerBase
             firstName = user.FirstName,
             lastName = user.LastName,
             email = user.Email,
-            role = user.Role.ToString()
+            profilId = user.ProfilId
         });
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "RequireAdmin")]
     [HttpPost]
     public IActionResult Add(Utilisateur user)
     {
@@ -69,7 +63,7 @@ public class UtilisateurController : ControllerBase
         return Ok(user);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "RequireAdmin")]
     [HttpPut("{id}")]
     public IActionResult Update(int id, UserResponseDTO dto)
     {
@@ -78,25 +72,25 @@ public class UtilisateurController : ControllerBase
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.Email = dto.Email;
-        user.Role = (Role)dto.Role;
+        user.ProfilId = dto.ProfilId;
         _service.Update(user);
         _service.Commit();
         return Ok(user);
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPut("{id}/role")]
-    public IActionResult ChangeRole(int id, [FromBody] Role role)
+    [Authorize(Policy = "RequireAdmin")]
+    [HttpPut("{id}/profil")]
+    public IActionResult ChangeProfil(int id, [FromBody] int? profilId)
     {
         var user = _service.GetById(id);
         if (user == null) return NotFound();
-        user.Role = role;
+        user.ProfilId = profilId;
         _service.Update(user);
         _service.Commit();
         return Ok(user);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "RequireAdmin")]
     [HttpDelete("{id}")]
     public IActionResult Delete(int id)
     {
@@ -114,7 +108,6 @@ public class UtilisateurController : ControllerBase
             LastName = dto.LastName,
             Email = dto.Email,
             Password = _service.HashPassword(dto.Password),
-            Role = Role.User,
             Actif = true
         };
         _service.Add(user);
@@ -123,20 +116,18 @@ public class UtilisateurController : ControllerBase
     }
 
     [HttpPost("signin")]
-    public IActionResult Signin([FromBody] LoginDTO dto)
+    public async Task<IActionResult> Signin([FromBody] LoginDTO dto)
     {
-        var user = _service.GetByEmail(dto.Email);
-        if (user == null || !_service.VerifyPassword(user, dto.Password))
-            return Unauthorized("Email ou mot de passe incorrect");
-
+        var user = await _service.Authenticate(dto.Email, dto.Password);
+        if (user == null) return Unauthorized();
         var token = _jwtService.GenerateToken(user);
-
         return Ok(new
         {
             id = user.Id,
             email = user.Email,
-            role = user.Role.ToString(),
-            token = token
+            estAdmin = user.Profil?.EstAdmin ?? false,
+            profilId = user.ProfilId,
+            token
         });
     }
 }

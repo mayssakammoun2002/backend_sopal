@@ -7,3 +7,4 @@
         public bool Modification { get; set; }
         public bool Suppression { get; set; }
     }
+}

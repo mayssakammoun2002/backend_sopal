@@ -17,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
+// ── Controllers + JSON (fusionné, un seul appel) ────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -24,12 +25,8 @@ builder.Services.AddControllers()
             System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    }); builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.PropertyNamingPolicy =
-            System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+
 builder.Services.AddDbContext<ExamenDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
@@ -47,7 +44,7 @@ builder.Services.AddHttpClient<IServicePredictionDefaut, ServicePredictionDefaut
 builder.Services.AddScoped<IServiceLot, ServiceLot>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ReportService>();
-builder.Services.AddScoped<IServiceProfil, ServiceProfil>();   
+builder.Services.AddScoped<IServiceProfil, ServiceProfil>();
 builder.Services.AddScoped<IServiceMenu, ServiceMenu>();
 
 // ── Notifications ─────────────────────────────────────────────────────────
@@ -100,9 +97,16 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
                                        Encoding.UTF8.GetBytes(key!)),
-        RoleClaimType = ClaimTypes.Role,
         NameClaimType = "id"
+        // ✅ RoleClaimType retiré (plus de Role)
     };
+});
+
+// ── Autorisation basée sur profil (EstAdmin) ────────────────────────────
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdmin", policy =>
+        policy.RequireClaim("estAdmin", "true"));
 });
 
 // ── CORS ──────────────────────────────────────────────────────────────────
