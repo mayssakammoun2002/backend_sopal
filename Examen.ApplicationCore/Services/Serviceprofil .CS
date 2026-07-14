@@ -125,7 +125,9 @@ namespace Examen.ApplicationCore.Services
                     Lecture = f.Lecture,
                     Creation = f.Creation,
                     Modification = f.Modification,
-                    Suppression = f.Suppression
+                    Suppression = f.Suppression,
+                    Upload = f.Upload,
+                    Download = f.Download
                 });
 
             _unitOfWork.Repository<Profil>().Update(profil);
@@ -152,7 +154,9 @@ namespace Examen.ApplicationCore.Services
                 Lecture = pf.Lecture,
                 Creation = pf.Creation,
                 Modification = pf.Modification,
-                Suppression = pf.Suppression
+                Suppression = pf.Suppression,
+                Upload = pf.Upload,
+                Download = pf.Download
             }).ToList() ?? new()
         };
     }

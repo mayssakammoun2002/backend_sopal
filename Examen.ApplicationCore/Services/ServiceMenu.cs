@@ -67,7 +67,9 @@ namespace Examen.ApplicationCore.Services
                             Lecture = true,
                             Creation = true,
                             Modification = true,
-                            Suppression = true
+                            Suppression = true,
+                            Upload = true,
+                            Download = true
                         }
                     }).ToList();
 
@@ -92,7 +94,7 @@ namespace Examen.ApplicationCore.Services
             }
 
             return ConstruireArbre(RACINE)
-                .Concat(ConstruireFonctions(null)) // ✅ inclut les fonctions racine (sans parent)
+                .Concat(ConstruireFonctions(null))
                 .OrderBy(x => x.Rang)
                 .ToList();
         }
@@ -115,9 +117,32 @@ namespace Examen.ApplicationCore.Services
                 .Where(d => d.ProfilId == profilId)
                 .ToDictionary(d => d.MenuId);
 
-            var menusAutorises = tousMenus
+            var menusParId = tousMenus.ToDictionary(m => m.Id);
+
+            // Menus explicitement cochés visibles pour ce profil
+            var idsExplicitementVisibles = tousMenus
                 .Where(m => profilMenus.TryGetValue(m.Id, out var visible) && visible)
+                .Select(m => m.Id)
                 .ToList();
+
+            // ✅ CORRECTION : on remonte automatiquement la chaîne des parents
+            // pour chaque menu visible, afin que les parents (non cochés) restent
+            // présents dans l'arbre. Sans ça, un enfant visible dont le parent
+            // n'est pas coché disparaît entièrement du sidebar.
+            var idsAutorises = new HashSet<int>(idsExplicitementVisibles);
+            foreach (var id in idsExplicitementVisibles)
+            {
+                var courantId = id;
+                while (menusParId.TryGetValue(courantId, out var courant) && courant.ParentId.HasValue)
+                {
+                    if (!idsAutorises.Add(courant.ParentId.Value))
+                        break; // déjà ajouté (et donc ses propres parents aussi) -> on arrête de remonter
+
+                    courantId = courant.ParentId.Value;
+                }
+            }
+
+            var menusAutorises = tousMenus.Where(m => idsAutorises.Contains(m.Id)).ToList();
 
             const int RACINE = -1;
 
@@ -145,7 +170,9 @@ namespace Examen.ApplicationCore.Services
                                 Lecture = d?.Lecture ?? false,
                                 Creation = d?.Creation ?? false,
                                 Modification = d?.Modification ?? false,
-                                Suppression = d?.Suppression ?? false
+                                Suppression = d?.Suppression ?? false,
+                                Upload = d?.Upload ?? false,
+                                Download = d?.Download ?? false
                             }
                         };
                     }).ToList();
@@ -171,7 +198,7 @@ namespace Examen.ApplicationCore.Services
             }
 
             return ConstruireArbre(RACINE)
-                .Concat(ConstruireFonctions(null)) // ✅ inclut les fonctions racine (sans parent)
+                .Concat(ConstruireFonctions(null))
                 .OrderBy(x => x.Rang)
                 .ToList();
         }

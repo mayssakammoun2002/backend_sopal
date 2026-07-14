@@ -69,7 +69,6 @@ namespace Examen.UI.Web.Controllers
             return NoContent();
         }
 
-        // ✅ Accessible à TOUT utilisateur connecté (pas seulement admin) — chacun récupère son propre menu
         [Authorize]
         [HttpGet("mon-menu")]
         public ActionResult<List<MenuUtilisateurDto>> GetMonMenu()

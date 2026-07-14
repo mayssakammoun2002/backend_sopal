@@ -9,7 +9,7 @@ namespace Examen.UI.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "RequireAdmin")] // ✅ tout le contrôleur réservé à l'admin
+    [Authorize(Policy = "RequireAdmin")] 
     public class ProfilsController : ControllerBase
     {
         private readonly IServiceProfil _serviceProfil;

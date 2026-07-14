@@ -19,17 +19,16 @@ namespace Examen.Web.Controllers
             _service = service;
         }
 
-        // Récupère l'Id de l'utilisateur connecté à partir du JWT
         private int? GetUtilisateurIdConnecte()
         {
             var claim = User.FindFirst("id")?.Value;
             return int.TryParse(claim, out var id) ? id : null;
         }
 
-        // Détermine si l'utilisateur connecté est Admin
         private bool EstAdmin()
         {
-            return User.IsInRole("Admin");
+            var claim = User.FindFirst("estAdmin")?.Value;
+            return claim == "true";
         }
 
         [HttpGet]
