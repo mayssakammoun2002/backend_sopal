@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.Infrastructure.Services;
 
 namespace Examen.ApplicationCore.Interfaces
@@ -15,5 +16,6 @@ namespace Examen.ApplicationCore.Interfaces
 
         bool UpdateMenus(int profilId, List<ProfilMenuRequest> menus);
         bool UpdateDroits(int profilId, List<ProfilFonctionDroitRequest> droits);
+        Task<PaginatedResult<ProfilDto>> GetProfilsPaginesAsync(PaginationParams paginationParams);
     }
 }

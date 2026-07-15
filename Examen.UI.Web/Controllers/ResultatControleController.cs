@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using System;
+using System.Linq;
 using System.Security.Claims;
 
 namespace Examen.Web.Controllers
@@ -32,11 +34,12 @@ namespace Examen.Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAll()
+        public IActionResult GetAll([FromQuery] PaginationParams paginationParams)
         {
             try
             {
-                var resultats = _service.GetAll(GetUtilisateurIdConnecte(), EstAdmin());
+                var resultats = _service.GetAllPaginated(
+                    GetUtilisateurIdConnecte(), EstAdmin(), paginationParams);
                 return Ok(resultats);
             }
             catch (Exception ex)
@@ -85,12 +88,7 @@ namespace Examen.Web.Controllers
                             kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
                         );
 
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Données invalides",
-                        errors
-                    });
+                    return BadRequest(new { success = false, message = "Données invalides", errors });
                 }
 
                 var resultat = _service.Ajouter(dto);

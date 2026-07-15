@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Examen.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace Examen.UI.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "RequireAdmin")] 
+    [Authorize(Policy = "RequireAdmin")]
     public class ProfilsController : ControllerBase
     {
         private readonly IServiceProfil _serviceProfil;
@@ -19,17 +20,12 @@ namespace Examen.UI.Web.Controllers
             _serviceProfil = serviceProfil;
         }
 
+        // Route paginée unique pour GET /api/Profils
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetProfils([FromQuery] PaginationParams paginationParams)
         {
-            try
-            {
-                return Ok(_serviceProfil.GetAll());
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
-            }
+            var resultat = await _serviceProfil.GetProfilsPaginesAsync(paginationParams);
+            return Ok(resultat);
         }
 
         [HttpGet("{id:int}")]

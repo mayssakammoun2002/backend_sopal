@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs.Common;
+using Examen.ApplicationCore.Extensions;
 using Examen.ApplicationCore.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Examen.ApplicationCore.Services
 {
     public class ServiceTypeDefaut : IServiceTypeDefaut
     {
         private readonly IUnitOfWork _unitOfWork;
-
         public ServiceTypeDefaut(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -55,6 +59,30 @@ namespace Examen.ApplicationCore.Services
         public void Commit()
         {
             _unitOfWork.Save();
+        }
+
+        // ───────────────────────────────────────────────
+        // Pagination + recherche
+        // ───────────────────────────────────────────────
+        public async Task<PaginatedResult<TypeDefaut>> GetTypeDefautsPaginesAsync(PaginationParams paginationParams)
+        {
+            var query = _unitOfWork.Repository<TypeDefaut>()
+                .Query()
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(paginationParams.Recherche))
+            {
+                var recherche = paginationParams.Recherche.ToLower();
+                query = query.Where(d =>
+                    d.NomDefaut.ToLower().Contains(recherche) ||
+                    (d.Description != null && d.Description.ToLower().Contains(recherche)));
+            }
+
+            query = query.OrderBy(d => d.NomDefaut);
+
+            return await query.ToPaginatedResultAsync(
+                paginationParams.PageNumber,
+                paginationParams.PageSize);
         }
     }
 }

@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using AM.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs.Common;
+using Examen.ApplicationCore.Extensions;
 using Examen.ApplicationCore.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Examen.ApplicationCore.Services
 {
     public class ServiceProduit : IServiceProduit
     {
         private readonly IUnitOfWork _unitOfWork;
-
         public ServiceProduit(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -25,7 +28,6 @@ namespace Examen.ApplicationCore.Services
         {
             if (string.IsNullOrWhiteSpace(codeArticle))
                 return null;
-
             return _unitOfWork.Repository<Produit>().GetById(codeArticle);
         }
 
@@ -61,10 +63,6 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork.Save();
         }
 
-        // ───────────────────────────────────────────────
-        // Méthodes spécifiques
-        // ───────────────────────────────────────────────
-
         public IEnumerable<TypeDefaut> GetAllTypeDefauts()
         {
             return _unitOfWork.Repository<TypeDefaut>().GetAll();
@@ -75,16 +73,39 @@ namespace Examen.ApplicationCore.Services
             if (minTaille < 0)
                 minTaille = 0;
 
-            // Si repository personnalisé existe
             if (_unitOfWork.Repository<Produit>() is IProduitRepository customRepo)
             {
                 return customRepo.GetWithEchantillonnageMinimum(minTaille);
             }
 
-            // Fallback
             return _unitOfWork.Repository<Produit>()
                 .GetAll()
                 .Where(p => p.TailleEchantillonnage >= minTaille);
+        }
+
+        // ───────────────────────────────────────────────
+        // Pagination + recherche
+        // ───────────────────────────────────────────────
+        public async Task<PaginatedResult<Produit>> GetProduitsPaginesAsync(PaginationParams paginationParams)
+        {
+            var query = _unitOfWork.Repository<Produit>()
+                .Query()
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(paginationParams.Recherche))
+            {
+                var recherche = paginationParams.Recherche.ToLower();
+                query = query.Where(p =>
+                    p.CodeArticle.ToLower().Contains(recherche) ||
+                    p.NomProduit.ToLower().Contains(recherche) ||
+                    (p.Designation != null && p.Designation.ToLower().Contains(recherche)));
+            }
+
+            query = query.OrderBy(p => p.CodeArticle);
+
+            return await query.ToPaginatedResultAsync(
+                paginationParams.PageNumber,
+                paginationParams.PageSize);
         }
     }
 }

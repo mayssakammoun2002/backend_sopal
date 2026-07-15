@@ -17,10 +17,16 @@ namespace Examen.ApplicationCore.DTOs
         public string LastName { get; set; }
 
         [Required]
+        [EmailAddress]
+        public string Email { get; set; }
+
+        [Required]
         public int Role { get; set; }
 
-        public bool Actif { get; set; }
-        public string Token { get; set; }  
+        public int? ProfilId { get; set; }
 
+        public bool Actif { get; set; }
+
+        public string Token { get; set; }
     }
-} 
+}

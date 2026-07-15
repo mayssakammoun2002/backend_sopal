@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Entities;
 using Examen.ApplicationCore.Interfaces;
 using Examen.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
-
+using Examen.ApplicationCore.DTOs.Common;
+using Examen.ApplicationCore.Extensions;
 namespace Examen.ApplicationCore.Services
 {
     public class ServiceProfil : IServiceProfil
@@ -133,6 +135,39 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork.Repository<Profil>().Update(profil);
             Commit();
             return true;
+        }
+
+        // ───────────────────────────────────────────────
+        // Pagination backend
+        // ───────────────────────────────────────────────
+        public async Task<PaginatedResult<ProfilDto>> GetProfilsPaginesAsync(PaginationParams paginationParams)
+        {
+            var query = _unitOfWork.Repository<Profil>()
+                .Query()
+                .AsNoTracking();
+
+            // Filtre de recherche optionnel
+            if (!string.IsNullOrWhiteSpace(paginationParams.Recherche))
+            {
+                var recherche = paginationParams.Recherche.ToLower();
+                query = query.Where(p =>
+                    p.Nom.ToLower().Contains(recherche) ||
+                    (p.Description != null && p.Description.ToLower().Contains(recherche)));
+            }
+
+            query = query.OrderBy(p => p.Nom); // tri obligatoire avant Skip/Take
+
+            var dtoQuery = query.Select(p => new ProfilDto
+            {
+                Id = p.Id,
+                Nom = p.Nom,
+                Description = p.Description,
+                NbUtilisateurs = p.Utilisateurs.Count
+            });
+
+            return await dtoQuery.ToPaginatedResultAsync(
+                paginationParams.PageNumber,
+                paginationParams.PageSize);
         }
 
         private static ProfilDto ToDto(Profil p) => new()

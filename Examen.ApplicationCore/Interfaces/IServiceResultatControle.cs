@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 
 namespace Examen.ApplicationCore.Interfaces
 {
@@ -12,10 +12,12 @@ namespace Examen.ApplicationCore.Interfaces
         ResultatControle GetById(string id);
         void Delete(string id);
 
-        IEnumerable<ResultatControleResponseDTO> GetAll(int? utilisateurIdConnecte, bool estAdmin);
+        PaginatedResult<ResultatControleResponseDTO> GetAllPaginated(
+            int? utilisateurIdConnecte,
+            bool estAdmin,
+            PaginationParams paginationParams);
 
         void Commit();
-
         ResultatControleStatsDTO GetStats(
             string? codeMachine,
             string? statut,

@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AM.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs.Common;
+using Examen.ApplicationCore.Extensions;
 using Examen.ApplicationCore.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Examen.ApplicationCore.Services
 {
     public class ServiceMachine : IServiceMachine
     {
         private readonly IUnitOfWork _unitOfWork;
-
         public ServiceMachine(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -24,7 +28,6 @@ namespace Examen.ApplicationCore.Services
         {
             if (string.IsNullOrWhiteSpace(codeMachine))
                 return null;
-
             return _unitOfWork.Repository<Machine>().GetById(codeMachine);
         }
 
@@ -58,6 +61,30 @@ namespace Examen.ApplicationCore.Services
         public void Commit()
         {
             _unitOfWork.Save();
+        }
+
+        // ───────────────────────────────────────────────
+        // Pagination + recherche
+        // ───────────────────────────────────────────────
+        public async Task<PaginatedResult<Machine>> GetMachinesPagineesAsync(PaginationParams paginationParams)
+        {
+            var query = _unitOfWork.Repository<Machine>()
+                .Query()
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(paginationParams.Recherche))
+            {
+                var recherche = paginationParams.Recherche.ToLower();
+                query = query.Where(m =>
+                    m.CodeMachine.ToLower().Contains(recherche) ||
+                    m.NomMachine.ToLower().Contains(recherche));
+            }
+
+            query = query.OrderBy(m => m.CodeMachine);
+
+            return await query.ToPaginatedResultAsync(
+                paginationParams.PageNumber,
+                paginationParams.PageSize);
         }
     }
 }

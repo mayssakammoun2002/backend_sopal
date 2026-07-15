@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs.Common;
 
 namespace Examen.ApplicationCore.Interfaces
 {
@@ -13,7 +15,9 @@ namespace Examen.ApplicationCore.Interfaces
         void DeleteById(string codeArticle);
         void Commit();
 
-        IEnumerable<Produit> GetWithEchantillonnageMinimum(int minTaille);
         IEnumerable<TypeDefaut> GetAllTypeDefauts();
+        IEnumerable<Produit> GetWithEchantillonnageMinimum(int minTaille);
+
+        Task<PaginatedResult<Produit>> GetProduitsPaginesAsync(PaginationParams paginationParams);
     }
 }

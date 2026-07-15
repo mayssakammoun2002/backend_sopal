@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs.Common;
 
 namespace Examen.ApplicationCore.Interfaces
 {
@@ -12,5 +14,7 @@ namespace Examen.ApplicationCore.Interfaces
         void Delete(Machine machine);
         void DeleteById(string codeMachine);
         void Commit();
+
+        Task<PaginatedResult<Machine>> GetMachinesPagineesAsync(PaginationParams paginationParams);
     }
 }

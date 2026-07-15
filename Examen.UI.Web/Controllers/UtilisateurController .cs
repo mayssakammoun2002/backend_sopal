@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -19,8 +20,18 @@ public class UtilisateurController : ControllerBase
         _jwtService = jwtService;
     }
 
+    // Liste paginée (utilisée par la page Gestion des Utilisateurs)
     [Authorize(Policy = "RequireAdmin")]
     [HttpGet]
+    public async Task<IActionResult> GetUtilisateurs([FromQuery] PaginationParams paginationParams)
+    {
+        var resultat = await _service.GetUtilisateursPaginesAsync(paginationParams);
+        return Ok(resultat);
+    }
+
+    // Liste complète non paginée (pour dropdowns/exports ailleurs dans l'app)
+    [Authorize(Policy = "RequireAdmin")]
+    [HttpGet("all")]
     public IActionResult GetAll() => Ok(_service.GetAll());
 
     [Authorize]
@@ -69,10 +80,12 @@ public class UtilisateurController : ControllerBase
     {
         var user = _service.GetById(id);
         if (user == null) return NotFound();
+
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.Email = dto.Email;
         user.ProfilId = dto.ProfilId;
+
         _service.Update(user);
         _service.Commit();
         return Ok(user);
@@ -84,6 +97,7 @@ public class UtilisateurController : ControllerBase
     {
         var user = _service.GetById(id);
         if (user == null) return NotFound();
+
         user.ProfilId = profilId;
         _service.Update(user);
         _service.Commit();
@@ -110,6 +124,7 @@ public class UtilisateurController : ControllerBase
             Password = _service.HashPassword(dto.Password),
             Actif = true
         };
+
         _service.Add(user);
         _service.Commit();
         return Ok();
@@ -120,6 +135,7 @@ public class UtilisateurController : ControllerBase
     {
         var user = await _service.Authenticate(dto.Email, dto.Password);
         if (user == null) return Unauthorized();
+
         var token = _jwtService.GenerateToken(user);
         return Ok(new
         {

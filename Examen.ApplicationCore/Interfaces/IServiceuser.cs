@@ -1,5 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs;
+using Examen.ApplicationCore.DTOs.Common;
 
 namespace Examen.ApplicationCore.Interfaces
 {
@@ -12,6 +14,7 @@ namespace Examen.ApplicationCore.Interfaces
         void Update(Utilisateur user);
         void DeleteById(int id);
         void Commit();
+        Task<PaginatedResult<UtilisateurDTO>> GetUtilisateursPaginesAsync(PaginationParams paginationParams);
         string HashPassword(string password);
         bool VerifyPassword(string password, string hash);
     }

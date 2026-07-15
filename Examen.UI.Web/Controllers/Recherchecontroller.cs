@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,6 @@ public class RechercheController : ControllerBase
         _serviceUtilisateur = serviceUtilisateur;
     }
 
-    // Récupère l'Id de l'utilisateur connecté à partir du JWT (claim "id")
     private int? GetUtilisateurIdConnecte()
     {
         var claim = User.FindFirst("id")?.Value;
@@ -125,7 +125,11 @@ public class RechercheController : ControllerBase
             });
 
         // Un opérateur ne retrouve dans la recherche que ses propres contrôles ; l'admin retrouve tout
-        var controles = _serviceResultatControle.GetAll(utilisateurIdConnecte, isAdmin)
+        var pageDeRecherche = new PaginationParams { PageNumber = 1, PageSize = 1000 };
+        var resultatsControle = _serviceResultatControle.GetAllPaginated(
+            utilisateurIdConnecte, isAdmin, pageDeRecherche);
+
+        var controles = resultatsControle.Items
             .Where(c =>
                 Contains(c.NumOF, term) ||
                 Contains(c.CodeArticle, term) ||
@@ -144,7 +148,7 @@ public class RechercheController : ControllerBase
                 route = "/form_resultat_de_controle"
             });
 
-        // Recherche sur les utilisateurs : réservée aux Admin (même règle que UtilisateurController.GetAll)
+        // Recherche sur les utilisateurs : réservée aux Admin
         IEnumerable<object> utilisateurs = Array.Empty<object>();
         if (isAdmin)
         {
