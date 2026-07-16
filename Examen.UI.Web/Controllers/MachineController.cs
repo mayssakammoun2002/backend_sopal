@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using Examen.ApplicationCore.Domain;
+using Examen.ApplicationCore.DTOs;
 using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +21,6 @@ namespace Examen.UI.Web.Controllers
             _serviceMachine = serviceMachine;
         }
 
-        // GET /api/Machine  → liste paginée + recherche
         [HttpGet]
         public async Task<IActionResult> GetMachines([FromQuery] PaginationParams paginationParams)
         {
@@ -45,12 +46,25 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] Machine machine)
+        public IActionResult Create([FromBody] MachineCreateDto dto)
         {
             try
             {
-                if (machine == null || !ModelState.IsValid)
+                if (!ModelState.IsValid)
                     return BadRequest(ModelState);
+
+                var existant = _serviceMachine.GetById(dto.CodeMachine);
+                if (existant != null)
+                    return BadRequest(new { message = $"La machine {dto.CodeMachine} existe déjà." });
+
+                var machine = new Machine
+                {
+                    CodeMachine = dto.CodeMachine,
+                    NomMachine = dto.NomMachine,
+                    Actif = dto.Actif,
+                    ResultatControles = new List<ResultatControle>(),
+                    Lots = new List<Lot>()
+                };
 
                 _serviceMachine.Add(machine);
                 _serviceMachine.Commit();
@@ -64,16 +78,19 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPut("{codeMachine}")]
-        public IActionResult Update(string codeMachine, [FromBody] Machine machine)
+        public IActionResult Update(string codeMachine, [FromBody] MachineUpdateDto dto)
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
                 var existant = _serviceMachine.GetById(codeMachine);
                 if (existant == null)
                     return NotFound(new { message = $"Machine {codeMachine} introuvable." });
 
-                existant.NomMachine = machine.NomMachine;
-                existant.Actif = machine.Actif;
+                existant.NomMachine = dto.NomMachine;
+                existant.Actif = dto.Actif;
 
                 _serviceMachine.Update(existant);
                 _serviceMachine.Commit();
@@ -106,7 +123,6 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // ⚠️ Reprends ici ton implémentation existante d'import Excel (ExcelReader, mapping colonnes, etc.)
         [HttpPost("import-excel")]
         public IActionResult ImportExcel(IFormFile file)
         {
