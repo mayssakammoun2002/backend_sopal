@@ -26,7 +26,7 @@ namespace Examen.ApplicationCore.DTOs
         public int? ProfilId { get; set; }
 
         public bool Actif { get; set; }
-
+        public string? Matricule { get; set; }
         public string Token { get; set; }
     }
 }

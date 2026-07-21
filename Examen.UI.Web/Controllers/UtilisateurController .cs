@@ -20,7 +20,6 @@ public class UtilisateurController : ControllerBase
         _jwtService = jwtService;
     }
 
-    // Liste paginée (utilisée par la page Gestion des Utilisateurs)
     [Authorize(Policy = "RequireAdmin")]
     [HttpGet]
     public async Task<IActionResult> GetUtilisateurs([FromQuery] PaginationParams paginationParams)
@@ -29,7 +28,6 @@ public class UtilisateurController : ControllerBase
         return Ok(resultat);
     }
 
-    // Liste complète non paginée (pour dropdowns/exports ailleurs dans l'app)
     [Authorize(Policy = "RequireAdmin")]
     [HttpGet("all")]
     public IActionResult GetAll() => Ok(_service.GetAll());
@@ -60,6 +58,7 @@ public class UtilisateurController : ControllerBase
             firstName = user.FirstName,
             lastName = user.LastName,
             email = user.Email,
+            matricule = user.Matricule,
             profilId = user.ProfilId
         });
     }
@@ -84,6 +83,7 @@ public class UtilisateurController : ControllerBase
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.Email = dto.Email;
+        user.Matricule = dto.Matricule;
         user.ProfilId = dto.ProfilId;
 
         _service.Update(user);
@@ -122,6 +122,7 @@ public class UtilisateurController : ControllerBase
             LastName = dto.LastName,
             Email = dto.Email,
             Password = _service.HashPassword(dto.Password),
+            Matricule = dto.Matricule,
             Actif = true
         };
 
@@ -141,9 +142,33 @@ public class UtilisateurController : ControllerBase
         {
             id = user.Id,
             email = user.Email,
+            matricule = user.Matricule,
             estAdmin = user.Profil?.EstAdmin ?? false,
             profilId = user.ProfilId,
             token
         });
+    }
+
+    // ✅ Nouvel endpoint : l'utilisateur connecté renseigne SON PROPRE matricule
+    // (utilisé par le formulaire de contrôle qualité quand le matricule manque)
+    [Authorize]
+    [HttpPut("me/matricule")]
+    public IActionResult UpdateMyMatricule([FromBody] MatriculeDTO dto)
+    {
+        var idClaim = User.FindFirst("id")?.Value;
+        if (idClaim == null)
+            return Unauthorized(new { message = "Claim id introuvable" });
+
+        if (string.IsNullOrWhiteSpace(dto?.Matricule))
+            return BadRequest(new { message = "Le matricule est obligatoire" });
+
+        var user = _service.GetById(int.Parse(idClaim));
+        if (user == null) return NotFound();
+
+        user.Matricule = dto.Matricule.Trim();
+        _service.Update(user);
+        _service.Commit();
+
+        return Ok(new { matricule = user.Matricule });
     }
 }

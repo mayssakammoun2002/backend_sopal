@@ -48,7 +48,7 @@ namespace Examen.ApplicationCore.Services
         {
             return _unitOfWork.Repository<Utilisateur>()
                 .Query()
-                .Include(u => u.Profil) // ✅ crucial pour EstAdmin
+                .Include(u => u.Profil)
                 .FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
         }
 
@@ -67,7 +67,6 @@ namespace Examen.ApplicationCore.Services
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        // ✅ Utilisée par le contrôleur Signin
         public Task<Utilisateur?> Authenticate(string email, string password)
         {
             var user = GetByEmail(email);
@@ -91,7 +90,8 @@ namespace Examen.ApplicationCore.Services
                 query = query.Where(u =>
                     u.FirstName.ToLower().Contains(recherche) ||
                     u.LastName.ToLower().Contains(recherche) ||
-                    u.Email.ToLower().Contains(recherche));
+                    u.Email.ToLower().Contains(recherche) ||
+                    (u.Matricule != null && u.Matricule.ToLower().Contains(recherche)));
             }
 
             query = query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
@@ -102,6 +102,7 @@ namespace Examen.ApplicationCore.Services
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 Email = u.Email,
+                Matricule = u.Matricule,
                 ProfilId = u.ProfilId,
                 Actif = u.Actif
             });

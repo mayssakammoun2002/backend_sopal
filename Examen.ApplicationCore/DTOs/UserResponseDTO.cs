@@ -8,6 +8,6 @@
         public string Email { get; set; }
         public int Role { get; set; }
         public int? ProfilId { get; set; } // ✅ ajouté
-
+        public string? Matricule { get; set; }
     }
 }

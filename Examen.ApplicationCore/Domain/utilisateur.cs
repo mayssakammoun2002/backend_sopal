@@ -15,6 +15,11 @@ namespace Examen.ApplicationCore.Domain
         [Required]
         public string Password { get; set; } = string.Empty;
         public bool Actif { get; set; } = true;
+
+        // ✅ Nouveau champ - optionnel au niveau base (nullable)
+        [StringLength(20)]
+        public string? Matricule { get; set; }
+
         public ICollection<ResultatControle> ResultatControles { get; set; } = new List<ResultatControle>();
         public ICollection<Lot> Lots { get; set; } = new List<Lot>();
         public int? ProfilId { get; set; }
