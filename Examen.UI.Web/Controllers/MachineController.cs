@@ -1,17 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.DTOs;
 using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Examen.UI.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize]
     public class MachineController : ControllerBase
     {
         private readonly IServiceMachine _serviceMachine;
@@ -46,6 +48,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Create([FromBody] MachineCreateDto dto)
         {
             try
@@ -78,6 +81,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPut("{codeMachine}")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Update(string codeMachine, [FromBody] MachineUpdateDto dto)
         {
             try
@@ -104,6 +108,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpDelete("{codeMachine}")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Delete(string codeMachine)
         {
             try
@@ -124,9 +129,9 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPost("import-excel")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult ImportExcel(IFormFile file)
         {
-            // Garde ta logique d'import existante, non reconstruite ici faute du fichier original.
             return StatusCode(501, new { message = "À compléter avec ta logique d'import existante." });
         }
     }

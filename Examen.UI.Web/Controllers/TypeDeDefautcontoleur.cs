@@ -4,13 +4,14 @@ using Examen.ApplicationCore.DTO;
 using Examen.ApplicationCore.DTOs.Common;
 using Examen.ApplicationCore.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Examen.UI.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize]
     public class TypeDefautController : ControllerBase
     {
         private readonly IServiceTypeDefaut _serviceTypeDefaut;
@@ -20,7 +21,6 @@ namespace Examen.UI.Web.Controllers
             _serviceTypeDefaut = serviceTypeDefaut;
         }
 
-        // GET /api/TypeDefaut  → liste paginée + recherche
         [HttpGet]
         public async Task<IActionResult> GetTypeDefauts([FromQuery] PaginationParams paginationParams)
         {
@@ -46,6 +46,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Create([FromForm] TypeDefautDto dto)
         {
             try
@@ -60,7 +61,6 @@ namespace Examen.UI.Web.Controllers
                     CauseProbable = dto.CauseProbable,
                     Solution = dto.Solution,
                     Frequence = dto.Frequence
-                    // ImagePath : reprends ici ta logique existante de sauvegarde de fichier (dto.ImageFile)
                 };
 
                 _serviceTypeDefaut.Add(defaut);
@@ -75,6 +75,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Update(int id, [FromForm] TypeDefautDto dto)
         {
             try
@@ -88,7 +89,6 @@ namespace Examen.UI.Web.Controllers
                 existant.CauseProbable = dto.CauseProbable;
                 existant.Solution = dto.Solution;
                 existant.Frequence = dto.Frequence;
-                // ImagePath : reprends ici ta logique existante si une nouvelle image est fournie
 
                 _serviceTypeDefaut.Update(existant);
                 _serviceTypeDefaut.Commit();
@@ -102,6 +102,7 @@ namespace Examen.UI.Web.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult Delete(int id)
         {
             try
@@ -121,8 +122,8 @@ namespace Examen.UI.Web.Controllers
             }
         }
 
-        // ⚠️ Reprends ici ton implémentation existante d'import Excel
         [HttpPost("import-excel")]
+        [Authorize(Policy = "RequireAdmin")]
         public IActionResult ImportExcel(IFormFile file)
         {
             return StatusCode(501, new { message = "À compléter avec ta logique d'import existante." });

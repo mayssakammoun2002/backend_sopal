@@ -15,9 +15,15 @@ namespace Examen.ApplicationCore.Interfaces
         PaginatedResult<ResultatControleResponseDTO> GetAllPaginated(
             int? utilisateurIdConnecte,
             bool estAdmin,
-            PaginationParams paginationParams);
+            PaginationParams paginationParams,
+            string? codeMachine = null,
+            string? statut = null,
+            DateTime? dateDebut = null,
+            DateTime? dateFin = null,
+            string? recherche = null);
 
         void Commit();
+
         ResultatControleStatsDTO GetStats(
             string? codeMachine,
             string? statut,

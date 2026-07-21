@@ -34,12 +34,19 @@ namespace Examen.Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAll([FromQuery] PaginationParams paginationParams)
+        public IActionResult GetAll(
+            [FromQuery] PaginationParams paginationParams,
+            [FromQuery] string? codeMachine,
+            [FromQuery] string? statut,
+            [FromQuery] DateTime? dateDebut,
+            [FromQuery] DateTime? dateFin,
+            [FromQuery] string? recherche)
         {
             try
             {
                 var resultats = _service.GetAllPaginated(
-                    GetUtilisateurIdConnecte(), EstAdmin(), paginationParams);
+                    GetUtilisateurIdConnecte(), EstAdmin(), paginationParams,
+                    codeMachine, statut, dateDebut, dateFin, recherche);
                 return Ok(resultats);
             }
             catch (Exception ex)

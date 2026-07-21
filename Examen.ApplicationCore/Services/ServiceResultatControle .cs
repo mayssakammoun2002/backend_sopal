@@ -19,9 +19,10 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         }
 
-        // ====================== GET ALL (PAGINÉ) ======================
+        // ====================== GET ALL (PAGINÉ + FILTRÉ) ======================
         public PaginatedResult<ResultatControleResponseDTO> GetAllPaginated(
-            int? utilisateurIdConnecte, bool estAdmin, PaginationParams paginationParams)
+            int? utilisateurIdConnecte, bool estAdmin, PaginationParams paginationParams,
+            string? codeMachine, string? statut, DateTime? dateDebut, DateTime? dateFin, string? recherche)
         {
             try
             {
@@ -31,10 +32,16 @@ namespace Examen.ApplicationCore.Services
                 if (!estAdmin && utilisateurIdConnecte.HasValue)
                     query = query.Where(r => r.UtilisateurId == utilisateurIdConnecte.Value);
 
-                query = query.OrderByDescending(r => r.DateControle);
+                if (!string.IsNullOrWhiteSpace(codeMachine))
+                    query = query.Where(r => r.CodeMachine.Trim().ToUpper() == codeMachine.Trim().ToUpper());
+                if (!string.IsNullOrWhiteSpace(statut))
+                    query = query.Where(r => r.StatutLot == statut);
+                if (dateDebut.HasValue)
+                    query = query.Where(r => r.DateControle >= dateDebut.Value);
+                if (dateFin.HasValue)
+                    query = query.Where(r => r.DateControle <= dateFin.Value);
 
-                var paginated = query.ToPaginatedResult(
-                    paginationParams.PageNumber, paginationParams.PageSize);
+                query = query.OrderByDescending(r => r.DateControle);
 
                 var machines = _unitOfWork.Repository<Machine>().GetAll()
                     .ToDictionary(m => m.CodeMachine.Trim().ToUpper(), m => m.NomMachine ?? "N/A");
@@ -45,7 +52,30 @@ namespace Examen.ApplicationCore.Services
                             ? "Inconnu"
                             : $"{u.FirstName} {u.LastName}".Trim());
 
-                var items = paginated.Items.Select(r => new ResultatControleResponseDTO
+                // Matérialisation nécessaire car "recherche" porte aussi sur le nom du contrôleur
+                // (calculé depuis Utilisateur, donc absent de la table ResultatControle)
+                var resultatsFiltres = query.ToList();
+
+                if (!string.IsNullOrWhiteSpace(recherche))
+                {
+                    var terme = recherche.Trim().ToLower();
+                    resultatsFiltres = resultatsFiltres.Where(r =>
+                        (r.NumOF ?? "").ToLower().Contains(terme) ||
+                        (r.CodeArticle ?? "").ToLower().Contains(terme) ||
+                        (utilisateurs.TryGetValue(r.UtilisateurId, out var nomC) && nomC.ToLower().Contains(terme))
+                    ).ToList();
+                }
+
+                int totalCount = resultatsFiltres.Count;
+                int pageNumber = paginationParams.PageNumber < 1 ? 1 : paginationParams.PageNumber;
+                int pageSize = paginationParams.PageSize < 1 ? 10 : paginationParams.PageSize;
+
+                var pageItems = resultatsFiltres
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = pageItems.Select(r => new ResultatControleResponseDTO
                 {
                     Id = r.Id ?? "",
                     DateControle = r.DateControle,
@@ -73,9 +103,9 @@ namespace Examen.ApplicationCore.Services
                 return new PaginatedResult<ResultatControleResponseDTO>
                 {
                     Items = items,
-                    PageNumber = paginated.PageNumber,
-                    PageSize = paginated.PageSize,
-                    TotalCount = paginated.TotalCount
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
                 };
             }
             catch (Exception ex)
