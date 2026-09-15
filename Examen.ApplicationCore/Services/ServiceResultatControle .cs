@@ -19,18 +19,63 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         }
 
+        // ====================== HELPERS CONTROLEURS ======================
+
+        private static List<int> ParseControleurIds(string? ids)
+        {
+            if (string.IsNullOrWhiteSpace(ids))
+                return new List<int>();
+
+            return ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                      .Select(s => int.TryParse(s.Trim(), out var v) ? v : 0)
+                      .Where(v => v > 0)
+                      .ToList();
+        }
+
+        /*
+         * Construit la chaîne des noms de contrôleurs.
+         * Si le front n'envoie que les IDs, on résout les noms en base.
+         */
+        private string? ResoudreNomsControleurs(
+            List<int>? controleurIds,
+            string? controleurNoms,
+            Dictionary<int, string>? cacheUtilisateurs = null)
+        {
+            if (!string.IsNullOrWhiteSpace(controleurNoms))
+                return controleurNoms.Trim();
+
+            if (controleurIds == null || controleurIds.Count == 0)
+                return null;
+
+            var utilisateurs = cacheUtilisateurs ?? _unitOfWork.Repository<Utilisateur>().GetAll()
+                .ToDictionary(u => u.Id, u =>
+                    string.IsNullOrWhiteSpace(u.FirstName) && string.IsNullOrWhiteSpace(u.LastName)
+                        ? "Inconnu"
+                        : $"{u.FirstName} {u.LastName}".Trim());
+
+            var noms = controleurIds
+                .Select(id => utilisateurs.TryGetValue(id, out var n) ? n : null)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList();
+
+            return noms.Count == 0 ? null : string.Join(", ", noms);
+        }
+
         // ====================== GET ALL (PAGINÉ + FILTRÉ) ======================
+
         public PaginatedResult<ResultatControleResponseDTO> GetAllPaginated(
             int? utilisateurIdConnecte, bool estAdmin, PaginationParams paginationParams,
             string? codeMachine, string? statut, DateTime? dateDebut, DateTime? dateFin, string? recherche)
         {
             try
             {
-                IQueryable<ResultatControle> query = _unitOfWork.Repository<ResultatControle>().GetAll().AsQueryable();
+                IQueryable<ResultatControle> query =
+                    _unitOfWork.Repository<ResultatControle>().GetAll().AsQueryable();
 
-                // Un opérateur ne voit que ses propres contrôles, l'admin voit tout
-                if (!estAdmin && utilisateurIdConnecte.HasValue)
-                    query = query.Where(r => r.UtilisateurId == utilisateurIdConnecte.Value);
+                /*
+                 * ⚠️ Plus aucun filtre par utilisateur connecté :
+                 * tout utilisateur authentifié voit l'historique complet.
+                 */
 
                 if (!string.IsNullOrWhiteSpace(codeMachine))
                     query = query.Where(r => r.CodeMachine.Trim().ToUpper() == codeMachine.Trim().ToUpper());
@@ -52,17 +97,27 @@ namespace Examen.ApplicationCore.Services
                             ? "Inconnu"
                             : $"{u.FirstName} {u.LastName}".Trim());
 
-                // Matérialisation nécessaire car "recherche" porte aussi sur le nom du contrôleur
-                // (calculé depuis Utilisateur, donc absent de la table ResultatControle)
                 var resultatsFiltres = query.ToList();
 
+                // ---------- RECHERCHE GLOBALE ----------
                 if (!string.IsNullOrWhiteSpace(recherche))
                 {
                     var terme = recherche.Trim().ToLower();
+
                     resultatsFiltres = resultatsFiltres.Where(r =>
                         (r.NumOF ?? "").ToLower().Contains(terme) ||
                         (r.CodeArticle ?? "").ToLower().Contains(terme) ||
-                        (utilisateurs.TryGetValue(r.UtilisateurId, out var nomC) && nomC.ToLower().Contains(terme))
+                        (r.CodeMachine ?? "").ToLower().Contains(terme) ||
+                        (machines.TryGetValue((r.CodeMachine ?? "").Trim().ToUpper(), out var nm)
+                            && nm.ToLower().Contains(terme)) ||
+                        (r.NumLotMatiere ?? "").ToLower().Contains(terme) ||
+                        (r.NumConteneur ?? "").ToLower().Contains(terme) ||
+                        (r.StatutLot ?? "").ToLower().Contains(terme) ||
+                        (r.Defaut1 ?? "").ToLower().Contains(terme) ||
+                        (r.Defaut2 ?? "").ToLower().Contains(terme) ||
+                        (r.ControleurNoms ?? "").ToLower().Contains(terme) ||
+                        (utilisateurs.TryGetValue(r.UtilisateurId, out var nomSaisie)
+                            && nomSaisie.ToLower().Contains(terme))
                     ).ToList();
                 }
 
@@ -75,29 +130,44 @@ namespace Examen.ApplicationCore.Services
                     .Take(pageSize)
                     .ToList();
 
-                var items = pageItems.Select(r => new ResultatControleResponseDTO
+                var items = pageItems.Select(r =>
                 {
-                    Id = r.Id ?? "",
-                    DateControle = r.DateControle,
-                    CodeMachine = r.CodeMachine ?? "",
-                    NomMachine = machines.TryGetValue((r.CodeMachine ?? "").Trim().ToUpper(), out var nomMachine)
-                                ? nomMachine : "N/A",
-                    CodeArticle = r.CodeArticle ?? "",
-                    NomProduit = "N/A",
-                    UtilisateurId = r.UtilisateurId,
-                    Controleur = utilisateurs.TryGetValue(r.UtilisateurId, out var nomControleur)
-                                ? nomControleur : "Inconnu",
-                    NumOF = r.NumOF ?? "",
-                    NumLotMatiere = r.NumLotMatiere,
-                    Quantite = r.Quantite,
-                    Cadence = r.Cadence,
-                    NbEchantillons = r.NbEchantillons,
-                    StatutLot = r.StatutLot ?? "Non Conforme",
-                    NbDefautsTest1 = r.NbDefautsTest1,
-                    NbDefautsTest2 = r.NbDefautsTest2,
-                    SolutionGlobale = r.SolutionGlobale,
-                    Defaut1 = r.Defaut1,
-                    Defaut2 = r.Defaut2
+                    var ids = ParseControleurIds(r.ControleurIds);
+
+                    // Priorité aux contrôleurs sélectionnés ;
+                    // repli sur les IDs, puis sur l'utilisateur de saisie.
+                    var nomsControleurs = !string.IsNullOrWhiteSpace(r.ControleurNoms)
+                        ? r.ControleurNoms!
+                        : (ResoudreNomsControleurs(ids, null, utilisateurs)
+                           ?? (utilisateurs.TryGetValue(r.UtilisateurId, out var f) ? f : "—"));
+
+                    return new ResultatControleResponseDTO
+                    {
+                        Id = r.Id ?? "",
+                        DateControle = r.DateControle,
+                        CodeMachine = r.CodeMachine ?? "",
+                        NomMachine = machines.TryGetValue((r.CodeMachine ?? "").Trim().ToUpper(), out var nomMachine)
+                                    ? nomMachine : "N/A",
+                        CodeArticle = r.CodeArticle ?? "",
+                        NomProduit = "N/A",
+                        UtilisateurId = r.UtilisateurId,
+                        SaisiPar = utilisateurs.TryGetValue(r.UtilisateurId, out var nomSaisiPar)
+                                    ? nomSaisiPar : "Inconnu",
+                        Controleur = nomsControleurs,
+                        ControleurIds = ids,
+                        NumOF = r.NumOF ?? "",
+                        NumLotMatiere = r.NumLotMatiere,
+                        NumConteneur = r.NumConteneur,
+                        Quantite = r.Quantite,
+                        Cadence = r.Cadence,
+                        NbEchantillons = r.NbEchantillons,
+                        StatutLot = r.StatutLot ?? "Non Conforme",
+                        NbDefautsTest1 = r.NbDefautsTest1,
+                        NbDefautsTest2 = r.NbDefautsTest2,
+                        SolutionGlobale = r.SolutionGlobale,
+                        Defaut1 = r.Defaut1,
+                        Defaut2 = r.Defaut2
+                    };
                 }).ToList();
 
                 return new PaginatedResult<ResultatControleResponseDTO>
@@ -116,6 +186,7 @@ namespace Examen.ApplicationCore.Services
         }
 
         // ====================== AJOUTER ======================
+
         public ResultatControle Ajouter(ResultatControleDTO dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
@@ -128,7 +199,9 @@ namespace Examen.ApplicationCore.Services
                 throw new ArgumentException("NumOF est obligatoire.");
             if (dto.UtilisateurId == null || dto.UtilisateurId <= 0)
                 throw new ArgumentException("UtilisateurId est obligatoire.");
-            if (dto.Quantite <= 0)
+            if (dto.ControleurIds == null || dto.ControleurIds.Count == 0)
+                throw new ArgumentException("Au moins un contrôleur doit être sélectionné.");
+            if (dto.Quantite.HasValue && dto.Quantite.Value <= 0)
                 throw new ArgumentException("Quantite doit être supérieure à 0.");
             if (dto.Cadence <= 0)
                 throw new ArgumentException("Cadence doit être supérieure à 0.");
@@ -151,9 +224,14 @@ namespace Examen.ApplicationCore.Services
                 CodeArticle = dto.CodeArticle.ToUpper().Trim(),
                 NumOF = dto.NumOF.Trim(),
                 NumLotMatiere = string.IsNullOrWhiteSpace(dto.NumLotMatiere) ? null : dto.NumLotMatiere.Trim(),
-                Quantite = dto.Quantite,
+                NumConteneur = string.IsNullOrWhiteSpace(dto.NumConteneur) ? null : dto.NumConteneur.Trim(),
+                Quantite = dto.Quantite ?? 0,
                 Cadence = dto.Cadence,
                 UtilisateurId = dto.UtilisateurId.Value,
+
+                ControleurIds = string.Join(",", dto.ControleurIds),
+                ControleurNoms = ResoudreNomsControleurs(dto.ControleurIds, dto.ControleurNoms),
+
                 NbEchantillons = dto.NbEchantillons > 0 ? dto.NbEchantillons : 3,
                 NbDefautsTest1 = dto.NbDefautsTest1,
                 NbDefautsTest2 = dto.NbDefautsTest2,
@@ -169,6 +247,7 @@ namespace Examen.ApplicationCore.Services
         }
 
         // ====================== MODIFIER ======================
+
         public ResultatControle Modifier(string id, ResultatControleDTO dto)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -186,7 +265,9 @@ namespace Examen.ApplicationCore.Services
                 throw new ArgumentException("NumOF est obligatoire.");
             if (dto.UtilisateurId == null || dto.UtilisateurId <= 0)
                 throw new ArgumentException("UtilisateurId est obligatoire.");
-            if (dto.Quantite <= 0)
+            if (dto.ControleurIds == null || dto.ControleurIds.Count == 0)
+                throw new ArgumentException("Au moins un contrôleur doit être sélectionné.");
+            if (dto.Quantite.HasValue && dto.Quantite.Value <= 0)
                 throw new ArgumentException("Quantite doit être supérieure à 0.");
             if (dto.Cadence <= 0)
                 throw new ArgumentException("Cadence doit être supérieure à 0.");
@@ -205,9 +286,14 @@ namespace Examen.ApplicationCore.Services
             existing.CodeArticle = dto.CodeArticle.ToUpper().Trim();
             existing.NumOF = dto.NumOF.Trim();
             existing.NumLotMatiere = string.IsNullOrWhiteSpace(dto.NumLotMatiere) ? null : dto.NumLotMatiere.Trim();
-            existing.Quantite = dto.Quantite;
+            existing.NumConteneur = string.IsNullOrWhiteSpace(dto.NumConteneur) ? null : dto.NumConteneur.Trim();
+            existing.Quantite = dto.Quantite ?? existing.Quantite;
             existing.Cadence = dto.Cadence;
             existing.UtilisateurId = dto.UtilisateurId.Value;
+
+            existing.ControleurIds = string.Join(",", dto.ControleurIds);
+            existing.ControleurNoms = ResoudreNomsControleurs(dto.ControleurIds, dto.ControleurNoms);
+
             existing.NbEchantillons = dto.NbEchantillons > 0 ? dto.NbEchantillons : existing.NbEchantillons;
             existing.NbDefautsTest1 = dto.NbDefautsTest1;
             existing.NbDefautsTest2 = dto.NbDefautsTest2;
@@ -236,7 +322,8 @@ namespace Examen.ApplicationCore.Services
             _unitOfWork.Save();
         }
 
-        // ====================== STATS (inchangé) ======================
+        // ====================== STATS ======================
+
         public ResultatControleStatsDTO GetStats(
             string? codeMachine, string? statut, DateTime? dateDebut, DateTime? dateFin,
             int? utilisateurIdConnecte, bool estAdmin)
@@ -253,8 +340,8 @@ namespace Examen.ApplicationCore.Services
                     query = query.Where(r => r.DateControle >= dateDebut.Value);
                 if (dateFin.HasValue)
                     query = query.Where(r => r.DateControle <= dateFin.Value);
-                if (!estAdmin && utilisateurIdConnecte.HasValue)
-                    query = query.Where(r => r.UtilisateurId == utilisateurIdConnecte.Value);
+
+                // Statistiques globales : aucun cloisonnement par utilisateur.
 
                 var resultats = query.ToList();
 
@@ -274,7 +361,9 @@ namespace Examen.ApplicationCore.Services
                 int nonConformes = total - conformes;
                 int totalDefauts = resultats.Sum(r => r.NbDefautsTest1 + r.NbDefautsTest2);
                 long quantiteTotaleRealisee = resultats.Sum(r => (long)r.Quantite);
-                double tauxSoudure = quantiteTotaleRealisee == 0 ? 0 : Math.Round(nonConformes * 100.0 / quantiteTotaleRealisee, 2);
+                double tauxSoudure = quantiteTotaleRealisee == 0
+                    ? 0
+                    : Math.Round(nonConformes * 100.0 / quantiteTotaleRealisee, 2);
 
                 var parMachine = resultats
                     .GroupBy(r => r.CodeMachine ?? "INCONNU")
@@ -285,7 +374,9 @@ namespace Examen.ApplicationCore.Services
                         TotalControles = g.Count(),
                         Conformes = g.Count(x => x.StatutLot == "Conforme"),
                         NonConformes = g.Count(x => x.StatutLot != "Conforme"),
-                        TauxConformite = g.Count() == 0 ? 0 : Math.Round(g.Count(x => x.StatutLot == "Conforme") * 100.0 / g.Count(), 1)
+                        TauxConformite = g.Count() == 0
+                            ? 0
+                            : Math.Round(g.Count(x => x.StatutLot == "Conforme") * 100.0 / g.Count(), 1)
                     })
                     .OrderByDescending(x => x.TotalControles)
                     .ToList();
@@ -295,14 +386,16 @@ namespace Examen.ApplicationCore.Services
                 {
                     if (r.NbDefautsTest1 > 0)
                     {
-                        string libelle = r.TypeDefaut1Id.HasValue && typesDefauts.TryGetValue(r.TypeDefaut1Id.Value, out var l1)
-                            ? l1 : (!string.IsNullOrWhiteSpace(r.Defaut1) ? r.Defaut1! : "Défaut non précisé");
+                        string libelle = !string.IsNullOrWhiteSpace(r.Defaut1)
+                            ? r.Defaut1!
+                            : "Défaut non précisé";
                         defautCounts[libelle] = defautCounts.GetValueOrDefault(libelle, 0) + r.NbDefautsTest1;
                     }
                     if (r.NbDefautsTest2 > 0)
                     {
-                        string libelle = r.TypeDefaut2Id.HasValue && typesDefauts.TryGetValue(r.TypeDefaut2Id.Value, out var l2)
-                            ? l2 : (!string.IsNullOrWhiteSpace(r.Defaut2) ? r.Defaut2! : "Défaut non précisé");
+                        string libelle = !string.IsNullOrWhiteSpace(r.Defaut2)
+                            ? r.Defaut2!
+                            : "Défaut non précisé";
                         defautCounts[libelle] = defautCounts.GetValueOrDefault(libelle, 0) + r.NbDefautsTest2;
                     }
                 }

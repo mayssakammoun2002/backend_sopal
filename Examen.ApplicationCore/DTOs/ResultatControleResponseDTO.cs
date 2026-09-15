@@ -1,42 +1,58 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Examen.ApplicationCore.DTOs
 {
     public class ResultatControleResponseDTO
     {
-        public string Id { get; set; } = string.Empty;
+        public string Id { get; set; } = "";
+
         public DateTime DateControle { get; set; }
 
-        // Machine
-        public string CodeMachine { get; set; } = string.Empty;
-        public string NomMachine { get; set; } = "N/A";
+        public string CodeMachine { get; set; } = "";
 
-        // Produit
-        public string CodeArticle { get; set; } = string.Empty;
-        public string NomProduit { get; set; } = "N/A";
+        public string NomMachine { get; set; } = "";
 
-        // Informations de production
-        public string NumOF { get; set; } = string.Empty;
+        public string CodeArticle { get; set; } = "";
+
+        public string NomProduit { get; set; } = "";
+
+        public string NumOF { get; set; } = "";
+
         public string? NumLotMatiere { get; set; }
 
+        public string? NumConteneur { get; set; }
+
         public int Quantite { get; set; }
+
         public int Cadence { get; set; }
 
-        // Résultats du contrôle
         public int NbEchantillons { get; set; }
-        public string StatutLot { get; set; } = string.Empty;
+
+        public string StatutLot { get; set; } = "Conforme";
 
         public int NbDefautsTest1 { get; set; }
+
         public int NbDefautsTest2 { get; set; }
 
         public string? SolutionGlobale { get; set; }
 
-        // Contrôleur
-        public int UtilisateurId { get; set; }
-        public string Controleur { get; set; } = "Inconnu";
-
-        // Défauts
         public string? Defaut1 { get; set; }
+
         public string? Defaut2 { get; set; }
+
+        /*
+         * Utilisateur ayant saisi le contrôle (traçabilité).
+         */
+        public int UtilisateurId { get; set; }
+
+        public string SaisiPar { get; set; } = "Inconnu";
+
+        /*
+         * Contrôleurs réellement sélectionnés.
+         */
+        public string Controleur { get; set; } = "—";
+
+        public List<int> ControleurIds { get; set; } = new List<int>();
     }
 }

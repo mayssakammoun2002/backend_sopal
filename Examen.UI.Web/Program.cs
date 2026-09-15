@@ -1,150 +1,347 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Examen.ApplicationCore.Domain;
 using Examen.ApplicationCore.Interfaces;
 using Examen.ApplicationCore.Services;
+using Examen.Infrastructure;
 using Examen.Infrastructure.Data;
 using Examen.Infrastructure.Hubs;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
-using Examen.Infrastructure;
 using Examen.Infrastructure.Services;
-using Examen.ApplicationCore.Domain;
 using Examen.Web.Controllers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ============================================================
+// JWT : éviter le mapping automatique des claims
+// ============================================================
+
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
-// ── Controllers + JSON (fusionné, un seul appel) ────────────────────────
-builder.Services.AddControllers()
+// ============================================================
+// CONTROLLERS + JSON
+// ============================================================
+
+builder.Services
+    .AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.CamelCase;
+
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
+// ============================================================
+// DATABASE
+// ============================================================
+
 builder.Services.AddDbContext<ExamenDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    )
 );
 
-// ── Repositories / UnitOfWork ─────────────────────────────────────────────
+// ============================================================
+// UNIT OF WORK
+// ============================================================
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// ── Services métier ───────────────────────────────────────────────────────
+// ============================================================
+// SERVICES MÉTIER
+// ============================================================
+
 builder.Services.AddScoped<IServiceMachine, ServiceMachine>();
+
 builder.Services.AddScoped<IServiceTypeDefaut, ServiceTypeDefaut>();
+
 builder.Services.AddScoped<IServiceProduit, ServiceProduit>();
-builder.Services.AddScoped<IServiceResultatControle, ServiceResultatControle>();
-builder.Services.AddScoped<IServiceUtilisateur, ServiceUtilisateur>();
-builder.Services.AddHttpClient<IServicePredictionDefaut, ServicePredictionDefaut>();
+
+builder.Services.AddScoped<
+    IServiceResultatControle,
+    ServiceResultatControle
+>();
+
+builder.Services.AddScoped<
+    IServiceUtilisateur,
+    ServiceUtilisateur
+>();
+
+builder.Services.AddHttpClient<
+    IServicePredictionDefaut,
+    ServicePredictionDefaut
+>();
+
 builder.Services.AddScoped<IServiceLot, ServiceLot>();
+
 builder.Services.AddScoped<JwtService>();
+
 builder.Services.AddScoped<ReportService>();
+
 builder.Services.AddScoped<IServiceProfil, ServiceProfil>();
+
 builder.Services.AddScoped<IServiceMenu, ServiceMenu>();
 
-// ── Notifications ─────────────────────────────────────────────────────────
+// ============================================================
+// NOTIFICATIONS EMAIL
+// ============================================================
+
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("EmailSettings")
 );
-builder.Services.AddScoped<INotificationService, EmailNotificationService>();
 
-// ── Alertes ───────────────────────────────────────────────────────────────
-builder.Services.AddScoped<IServiceAlerte, AlerteService>();
-builder.Services.AddHostedService<AlerteBackgroundService>();
+builder.Services.AddScoped<
+    INotificationService,
+    EmailNotificationService
+>();
 
-// ── SignalR ───────────────────────────────────────────────────────────────
+// ============================================================
+// ALERTES
+// ============================================================
+
+builder.Services.AddScoped<
+    IServiceAlerte,
+    AlerteService
+>();
+
+builder.Services.AddHostedService<
+    AlerteBackgroundService
+>();
+
+// ============================================================
+// SIGNALR
+// ============================================================
+
 builder.Services.AddSignalR();
 
-// ── JWT ───────────────────────────────────────────────────────────────────
-var key = builder.Configuration["Jwt:Key"];
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-    options.SaveToken = true;
+// ============================================================
+// JWT AUTHENTICATION
+// ============================================================
 
-    options.Events = new JwtBearerEvents
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key est manquant dans appsettings.json."
+    );
+}
+
+if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+    throw new InvalidOperationException(
+        "Jwt:Issuer est manquant dans appsettings.json."
+    );
+}
+
+if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new InvalidOperationException(
+        "Jwt:Audience est manquant dans appsettings.json."
+    );
+}
+
+builder.Services
+    .AddAuthentication(options =>
     {
-        OnMessageReceived = context =>
+        options.DefaultAuthenticateScheme =
+            JwtBearerDefaults.AuthenticationScheme;
+
+        options.DefaultChallengeScheme =
+            JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+
+        options.SaveToken = true;
+
+        // ====================================================
+        // SIGNALR : récupération du token dans access_token
+        // ====================================================
+
+        options.Events = new JwtBearerEvents
         {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) &&
-                path.StartsWithSegments("/hubs/notifications"))
+            OnMessageReceived = context =>
             {
-                context.Token = accessToken;
+                var accessToken =
+                    context.Request.Query["access_token"];
+
+                var path =
+                    context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments(
+                        "/hubs/notifications"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
             }
-            return Task.CompletedTask;
-        }
-    };
+        };
 
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-                                       Encoding.UTF8.GetBytes(key!)),
-        NameClaimType = "id"
-        // ✅ RoleClaimType retiré (plus de Role)
-    };
-});
+        // ====================================================
+        // VALIDATION DU TOKEN
+        // ====================================================
 
-// ── Autorisation basée sur profil (EstAdmin) ────────────────────────────
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+
+                ValidateAudience = true,
+
+                ValidateLifetime = true,
+
+                ValidateIssuerSigningKey = true,
+
+                ValidIssuer = jwtIssuer,
+
+                ValidAudience = jwtAudience,
+
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey)
+                    ),
+
+                // Notre claim personnalisé
+                NameClaimType = "id",
+
+                // IMPORTANT :
+                // Nous utilisons "estAdmin"
+                // et non ClaimTypes.Role
+                RoleClaimType = "estAdmin",
+
+                ClockSkew = TimeSpan.Zero
+            };
+    });
+
+// ============================================================
+// AUTHORIZATION
+// ============================================================
+
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("RequireAdmin", policy =>
-        policy.RequireClaim("estAdmin", "true"));
+    // --------------------------------------------------------
+    // ADMIN
+    // --------------------------------------------------------
+
+    options.AddPolicy(
+        "RequireAdmin",
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireClaim(
+                "estAdmin",
+                "true"
+            );
+        }
+    );
+
+    // --------------------------------------------------------
+    // UTILISATEUR AUTHENTIFIÉ
+    // --------------------------------------------------------
+
+    options.AddPolicy(
+        "RequireUser",
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
+        }
+    );
 });
 
-// ── CORS ──────────────────────────────────────────────────────────────────
+// ============================================================
+// CORS
+// ============================================================
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowViteDev", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy(
+        "AllowViteDev",
+        policy =>
+        {
+            policy
+                .WithOrigins(
+                    "http://localhost:5173"
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    );
 });
 
+// ============================================================
+// SWAGGER
+// ============================================================
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
-// ─────────────────────────────────────────────────────────────────────────
+// ============================================================
+// BUILD
+// ============================================================
+
 var app = builder.Build();
+
+// ============================================================
+// DEVELOPMENT
+// ============================================================
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
+
     app.UseSwaggerUI();
+
     app.UseDeveloperExceptionPage();
 }
 else
 {
     app.UseHttpsRedirection();
+
     app.UseExceptionHandler("/error");
 }
 
+// ============================================================
+// MIDDLEWARE
+// ============================================================
+
 app.UseCors("AllowViteDev");
+
 app.UseStaticFiles();
+
+// IMPORTANT : Authentication AVANT Authorization
 app.UseAuthentication();
+
 app.UseAuthorization();
+
+// ============================================================
+// CONTROLLERS
+// ============================================================
+
 app.MapControllers();
 
-app.MapHub<NotificationHub>("/hubs/notifications");
+// ============================================================
+// SIGNALR
+// ============================================================
+
+app.MapHub<NotificationHub>(
+    "/hubs/notifications"
+);
+
+// ============================================================
+// RUN
+// ============================================================
 
 app.Run();
