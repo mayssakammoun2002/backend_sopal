@@ -21,7 +21,7 @@ namespace Examen.Infrastructure.Data
         public DbSet<DestinataireNotification> DestinatairesNotification { get; set; }
         public DbSet<CommentaireAlerte> CommentairesAlerte { get; set; }
         public DbSet<PredictionDefaut> PredictionsDefauts { get; set; }
-
+        public DbSet<ConfigurationControle> ConfigurationControles { get; set; }
         // ====================== NOUVEAUX DbSets : GESTION DYNAMIQUE DES ACCES ======================
         public DbSet<Menu> Menus { get; set; }
         public DbSet<TypeFonction> TypeFonctions { get; set; }
